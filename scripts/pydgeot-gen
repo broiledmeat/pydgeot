@@ -1,0 +1,2 @@
+import runpy
+runpy.run_module('pydgeot.staticgen', run_name='__main__')

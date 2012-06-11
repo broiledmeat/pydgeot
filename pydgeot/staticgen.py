@@ -35,17 +35,17 @@ class _ChangeSet(object):
         self.copy |= other.copy
         self.delete |= other.delete
 
-class GenStatic(object):
+class StaticGen(object):
     """
     Creates and updates a copy of directory contents, rendering files where handlers are available. Tracks file
     changes so only necessary copying and deletion is done.
     """
-    DEFAULT_DEPENDENCY_MAP_FILENAME = '.pydgeot_genstatic_data'
+    DEFAULT_DEPENDENCY_MAP_FILENAME = '.pydgeot_staticgen_data'
     DEFAULT_FORCE_GENERATE = False
 
     ## These regexes apply to paths relative to the source root path
-    # Ignore completely            
-    DEFAULT_IGNORE_PATHS = []                       
+    # Ignore completely
+    DEFAULT_IGNORE_PATHS = []
     # Collect change lists and scan for template changes, but otherwise ignore
     DEFAULT_COLLECT_ONLY_PATHS = ['^\.templates(/.*)?$']
 
@@ -56,7 +56,7 @@ class GenStatic(object):
                  ignore_paths=DEFAULT_IGNORE_PATHS,
                  force_generate=DEFAULT_FORCE_GENERATE):
         """
-        Initialises GenStatic
+        Initialises StaticGen
 
         Args:
             source_root (str): Directory root to copy from.
@@ -297,15 +297,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('source_root', metavar='SOURCE_PATH')
     parser.add_argument('target_root', metavar='TARGET_PATH')
-    parser.add_argument('-f', '--force-generate', default=GenStatic.DEFAULT_FORCE_GENERATE, action='store_true', required=False)
-    parser.add_argument('--ignore-matches', dest='ignore_paths', default=GenStatic.DEFAULT_IGNORE_PATHS, help='File regexes to ignore.')
+    parser.add_argument('-f', '--force-generate', default=StaticGen.DEFAULT_FORCE_GENERATE, action='store_true', required=False)
+    parser.add_argument('--ignore-matches', dest='ignore_paths', default=StaticGen.DEFAULT_IGNORE_PATHS, help='File regexes to ignore.')
     args = vars(parser.parse_args())
 
     if isinstance(args['ignore_paths'], str):
         args['ignore_paths'] = str(args['ignore_paths']).split(',')
     
     try:
-        gen_static = GenStatic(**args)
+        gen_static = StaticGen(**args)
         gen_static.generate()
     except IOError as e:
         print(str(e))

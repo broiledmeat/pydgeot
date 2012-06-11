@@ -45,9 +45,7 @@ class StaticGen(object):
 
     ## These regexes apply to paths relative to the source root path
     # Ignore completely
-    DEFAULT_IGNORE_PATHS = []
-    # Collect change lists and scan for template changes, but otherwise ignore
-    DEFAULT_COLLECT_ONLY_PATHS = ['^\.templates(/.*)?$']
+    DEFAULT_IGNORE_PATHS = ['^\.templates(/.*)?$']
 
     def __init__(self,
                  source_root=None,

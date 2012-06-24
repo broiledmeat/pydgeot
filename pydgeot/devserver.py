@@ -3,7 +3,6 @@ Development Server
 An extremely simple file server that renders files with available handlers (HTML templates, CSS helpers, etc.)
 """
 import os
-import argparse
 import re
 import mimetypes
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -135,38 +134,3 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(bytes(content + '\n', 'utf-8'))
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('source_root', metavar='SOURCE_PATH')
-    parser.add_argument('-i', '--index-files', dest='index_files', default=Server.DEFAULT_INDEX_FILES, help='Comma separated index files list')
-    parser.add_argument('-u', '--url-redirects', dest='url_redirects', default=Server.DEFAULT_URL_REDIRECTS, help='Comma seperated url rewrite pairs')
-    parser.add_argument('-p', '--port', type=int, default=8080, help='Port to serve on')
-    parser.add_argument('-a', '--address', default='', help='Address to serve on')
-    args = vars(parser.parse_args())
-
-    # Split render_paths and/or index_files in to lists
-    if isinstance(args['index_files'], str):
-        args['index_files'] = args['index_files'].split(',')
-    if isinstance(args['url_redirects'], str):
-        args['url_redirects'] = args['url_redirects'].split(',')
-        args['url_redirects'] = list(zip(*[args['url_redirects'][i::2] for i in range(2)]))
-
-    # Remove port from the args list, as we pass the entire thing to Server
-    address = args.pop('address')
-    port = args.pop('port')
-
-    server = Server(address, port, **args)
-
-    for handler in get_handlers():
-        if hasattr(handler, 'desc'):
-            print('Available renderer: {0}'.format(handler.desc))
-        else:
-            print('Available renderer: {0}'.format(handler.uris.pattern))
-
-    try:
-        print('Serving on %s:%s' % (server.server_name, server.server_port))
-        server.serve_forever()
-    except KeyboardInterrupt:
-        server.socket.close()

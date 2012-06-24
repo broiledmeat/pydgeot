@@ -4,7 +4,6 @@ Copies content from a source directory, rendering files with available handlers 
 """
 import os
 import shutil
-import argparse
 import csv
 import re
 from .handlers import get_handler
@@ -290,20 +289,3 @@ class StaticGen(object):
         """
         stat = os.stat(source_path)
         os.utime(target_path, (stat.st_atime, stat.st_mtime))
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('source_root', metavar='SOURCE_PATH')
-    parser.add_argument('target_root', metavar='TARGET_PATH')
-    parser.add_argument('-f', '--force-generate', default=StaticGen.DEFAULT_FORCE_GENERATE, action='store_true', required=False)
-    parser.add_argument('--ignore-matches', dest='ignore_paths', default=StaticGen.DEFAULT_IGNORE_PATHS, help='File regexes to ignore.')
-    args = vars(parser.parse_args())
-
-    if isinstance(args['ignore_paths'], str):
-        args['ignore_paths'] = str(args['ignore_paths']).split(',')
-    
-    try:
-        gen_static = StaticGen(**args)
-        gen_static.generate()
-    except IOError as e:
-        print(str(e))

@@ -1,2 +1,25 @@
-import runpy
-runpy.run_module('pydgeot.staticgen', run_name='__main__')
+import argparse
+from pydgeot.staticgen import StaticGen
+from pydgeot.handlers import get_handlers
+
+parser = argparse.ArgumentParser()
+parser.add_argument('source_root', metavar='SOURCE_PATH')
+parser.add_argument('target_root', metavar='TARGET_PATH')
+parser.add_argument('-f', '--force-generate', default=StaticGen.DEFAULT_FORCE_GENERATE, action='store_true', required=False)
+parser.add_argument('--ignore-matches', dest='ignore_paths', default=StaticGen.DEFAULT_IGNORE_PATHS, help='File regexes to ignore.')
+args = vars(parser.parse_args())
+
+if isinstance(args['ignore_paths'], str):
+    args['ignore_paths'] = str(args['ignore_paths']).split(',')
+
+for handler in get_handlers():
+    if hasattr(handler, 'desc'):
+        print('Available renderer: {0}'.format(handler.desc))
+    else:
+        print('Available renderer: {0}'.format(handler.uris.pattern))
+
+try:
+    gen_static = StaticGen(**args)
+    gen_static.generate()
+except IOError as e:
+    print(str(e))

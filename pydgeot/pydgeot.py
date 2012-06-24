@@ -1,6 +1,6 @@
 """
-Command line renderer
-Method and command line access for getting a files rendered contents.
+Renderer
+Method for getting a files rendered contents.
 """
 def render(source_root, source_path):
     """
@@ -28,13 +28,3 @@ def render(source_root, source_path):
     return open(source_path).read()
 
     return template.render()
-
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('source_root', metavar='SOURCE_ROOT')
-    parser.add_argument('source_file', metavar='SOURCE_FILE')
-    args = vars(parser.parse_args())
-
-    print(render(args['source_root'], args['source_file']))

@@ -2,6 +2,10 @@
 Renderer
 Method for getting a files rendered contents.
 """
+
+from collections import namedtuple
+RenderResult = namedtuple('RenderResult', ['content', 'handler'])
+
 def render(source_root, source_path):
     """
     Render a file, using a handler if available.
@@ -24,7 +28,8 @@ def render(source_root, source_path):
 
     handler = get_handler(os.path.relpath(source_path, source_root))
     if handler is not None:
-        return handler.render(source_root, source_path)
-    return open(source_path).read()
+        content = handler.render(source_root, source_path)
+    else:
+        content = open(source_path, 'rb').read()
 
-    return template.render()
+    return RenderResult(content, handler)

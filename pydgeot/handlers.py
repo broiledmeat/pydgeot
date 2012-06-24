@@ -62,7 +62,7 @@ try:
         def __init__(self):
             self.envs = {}
         def render(self, source_root, source_path):
-            return self._env(source_root).from_string(open(source_path).read()).render()
+            return bytes(self._env(source_root).from_string(open(source_path).read()).render(), 'utf-8')
         def dependencies(self, source_root, source_path):
             body = self._env(source_root).parse(open(source_path).read()).body
             return self._find_deps(source_root, body)
@@ -114,7 +114,7 @@ try:
             self.formatter = formatter.Formatter(self.lessopts())
         def render(self, source_root, source_path):
             self.parser.parse(filename=source_path)
-            return self.formatter.format(self.parser)
+            return bytes(self.formatter.format(self.parser), 'utf-8')
         class lessopts:
             """
             Formatting options for Lesscpy formatter.

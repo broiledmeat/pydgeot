@@ -1,9 +1,9 @@
 import argparse
-from pydgeot.pydgeot import render
+from pydgeot.render import render
 
 parser = argparse.ArgumentParser()
 parser.add_argument('source_root', metavar='SOURCE_ROOT')
 parser.add_argument('source_file', metavar='SOURCE_FILE')
 args = vars(parser.parse_args())
 
-print(render(args['source_root'], args['source_file']))
+print(render(args['source_root'], args['source_file']).content)

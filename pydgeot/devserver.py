@@ -7,7 +7,7 @@ import re
 import mimetypes
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
-from .handlers import get_handler, get_handlers
+from .render import render
 
 class Server(HTTPServer):
     """
@@ -98,13 +98,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type', mimetype)
         self.end_headers()
 
-        # Pass off to a renderer if available
-        handler = get_handler(self.path)
-        if handler is not None:
-            content = handler.render(source_root, source_path)
-            self.wfile.write(bytes(content + '\n', 'utf-8'))
-        else:
-            self.wfile.write(open(source_path, 'rb').read())
+        # Render
+        result = render(source_root, source_path)
+        self.wfile.write(result.content)
 
     def serve_index(self, source_path):
         """

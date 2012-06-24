@@ -7,6 +7,7 @@ import shutil
 import csv
 import re
 from .handlers import get_handler
+from .render import render
 
 class _ChangeSet(object):
     """
@@ -242,7 +243,7 @@ class StaticGen(object):
         for source_path, target_path in render:
             handler = get_handler(self._relative_path(source_path))
             content = handler.render(self.source_root, source_path)
-            f = open(target_path, 'w')
+            f = open(target_path, 'wb')
             f.write(content)
             f.close()
             self._copy_times(source_path, target_path)

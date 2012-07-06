@@ -2,15 +2,6 @@ import os
 import configparser
 from collections import namedtuple
 
-CONFIG_DEFAULTS = {
-    'general': {
-        'data_store_file': './.pydgeot.db',
-    },
-    'staticgen': {
-        'force_generate': False
-    }
-}
-
 def abspath(path):
     return os.path.abspath(os.path.expanduser(path))
 
@@ -24,8 +15,6 @@ class PydgeotCore:
         self.config_file = abspath(os.path.join(source_root, config_file))
 
         self.config_parser = configparser.ConfigParser(allow_no_value=True)
-
-        self.load_conf_dict(CONFIG_DEFAULTS)
 
         if os.path.isfile(self.config_file):
             self.config_parser.read(self.config_file)

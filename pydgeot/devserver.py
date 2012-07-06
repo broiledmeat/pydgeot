@@ -7,37 +7,53 @@ import re
 import mimetypes
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.parse
-from .render import render
+from . import PydgeotCore, abspath
 
-class Server(HTTPServer):
+CONFIG_DEFAULTS = {
+    'server': {
+        'address': 'localhost',
+        'port': '8000',
+    },
+    'server_index_files': [
+        'index.html'
+    ],
+    'server_url_redirects': {}
+}
+
+class Server(PydgeotCore, HTTPServer):
     """
     HTTPServer containing configuration data.
     """
-    # These regexes apply to paths relative to the source root path
-    DEFAULT_INDEX_FILES = ['index.html']
-    DEFAULT_URL_REDIRECTS = []
-
     def __init__(self,
-                 address,
-                 port,
                  source_root=None,
-                 index_files=DEFAULT_INDEX_FILES,
-                 url_redirects=DEFAULT_URL_REDIRECTS):
+                 config_file=PydgeotCore.DEFAULT_CONFIG_FILE,
+                 config={}):
         """
         Initialises the server and properties needed for RequestHandlers.
 
         Args:
-            address (str): Network address to serve on.
-            port (int): Network port to serve on.
             source_root (str): Root directory to serve files from.
-            index_files (list(str)): List of possible index file names.
-            url_redirects: (list(str,str)): (uri,target) list of URI's to remap to a target path.
+            config_file (str): Filepath to load configuration from.
+            config (dict): Additional configuration to load.
         """
-        super(Server, self).__init__((address, port), RequestHandler)
-        self.source_root = os.path.abspath(os.path.expanduser(source_root))
-        self.index_files = index_files
-        self.url_redirects = [(re.compile('^/%s(/.*)?$' % (url.strip('/'))), os.path.abspath(os.path.expanduser(path)))
-                              for url, path in url_redirects]
+        PydgeotCore.__init__(self, source_root, config_file)
+
+        self.load_conf_dict(CONFIG_DEFAULTS)
+        self.load_conf_dict(config)
+
+        self.address = self.get_conf('server', 'address')
+        self.port = int(self.get_conf('server', 'port'))
+        self.index_files = self.get_conf_list('server_index_files')
+        self.url_redirects = [(re.compile('^/{0}(/.*)?$'.format(url.strip('/'))), abspath(path))
+                              for url, path in self.get_conf('server_url_redirects')]
+
+        HTTPServer.__init__(self, (self.address, self.port), RequestHandler)
+
+    def start(self):
+        self.serve_forever()
+
+    def stop(self):
+        self.socket.close()
 
 class RequestHandler(BaseHTTPRequestHandler):
     """
@@ -56,7 +72,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.path = urllib.parse.unquote(self.path)
         source_root = self.server.source_root
         source_path = os.path.join(source_root, self.path.lstrip('/'))
-        
+
         # Find matching url redirects and alter self.path and source_path accordingly
         if len(self.server.url_redirects) > 0:
             for url, target in self.server.url_redirects:
@@ -68,10 +84,19 @@ class RequestHandler(BaseHTTPRequestHandler):
                     else:
                         self.path = match.group(1)
                     source_path = os.path.join(source_root, self.path.lstrip('/'))
+                    print(self.path)
+                    print(source_path)
                     break
 
         # If source_path is a directory, try to find an index file
         if os.path.isdir(source_path):
+            # Redirect to 'path/' if path doesn't end with a '/'' already.
+            if not self.path.endswith('/'):
+                self.send_response(301)
+                self.send_header('Location', self.path + '/')
+                self.end_headers()
+                return
+
             index_path = None
             o_path = self.path.lstrip('/')
             if len(o_path) > 0 and o_path[-1] != '/':
@@ -90,7 +115,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         if os.path.isdir(source_path):
             return self.serve_index(source_path)
         elif not os.path.isfile(source_path):
-            self.send_error(404,'File Not Found: %s' % source_path)
+            self.send_error(404, 'File Not Found: ' + source_path)
+            return
 
         # Guess the mimetype and set headers
         mimetype = mimetypes.guess_type(source_path)[0]
@@ -99,7 +125,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         # Render
-        result = render(source_root, source_path)
+        result = self.server.render(source_path)
         self.wfile.write(result.content)
 
     def serve_index(self, source_path):
@@ -111,18 +137,12 @@ class RequestHandler(BaseHTTPRequestHandler):
         Returns:
             None
         """
-        content = '<!DOCTYPE html>\n<html><head><title>%s</title></head><body>\n' % (self.path,)
+        content = '<!DOCTYPE html>\n<html><head><title>{0}</title></head><body>\n'.format(self.path)
 
         for filename in sorted(os.listdir(source_path)):
-            rel_path = self.path + filename
-            file_path = os.path.join(source_path, filename)
-            name = filename
-
-            if os.path.isdir(file_path):
-                rel_path += '/'
-                name += '/'
-
-            content += '<a href="%s">%s</a><br>\n' % (rel_path, name)
+            if os.path.isdir(os.path.join(source_path, filename)):
+               filename += '/'
+            content += '<a href="{0}">{0}</a><br>\n'.format(filename)
 
         content += '</body></html>'
 

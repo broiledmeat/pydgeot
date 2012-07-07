@@ -42,7 +42,7 @@ class Server(PydgeotCore, HTTPServer):
         self.load_conf_dict(config)
 
         self.address = self.get_conf('server', 'address')
-        self.port = int(self.get_conf('server', 'port'))
+        self.port = self.get_conf('server', 'port', int)
         self.index_files = self.get_conf_list('server_index_files')
         self.url_redirects = [(re.compile('^/{0}(/.*)?$'.format(url.strip('/'))), abspath(path))
                               for url, path in self.get_conf('server_url_redirects')]

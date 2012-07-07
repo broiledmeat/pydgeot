@@ -5,7 +5,7 @@ from pydgeot.handlers import get_handlers
 parser = argparse.ArgumentParser()
 parser.add_argument('source_root', metavar='SOURCE_PATH')
 parser.add_argument('-c', '--config', dest='config_file',  default=Server.DEFAULT_CONFIG_FILE, help='Config file to load')
-parser.add_argument('-p', '--port', type=int, help='Port to serve on')
+parser.add_argument('-p', '--port', help='Port to serve on')
 parser.add_argument('-a', '--address', help='Address to serve on')
 parser.add_argument('-i', '--index-files', dest='index_files', help='Comma separated index files list')
 parser.add_argument('-u', '--url-redirects', dest='url_redirects', help='Comma seperated url rewrite pairs')

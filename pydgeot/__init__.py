@@ -49,7 +49,7 @@ class PydgeotCore:
     def set_conf(self, section, key, value):
         if not self.config_parser.has_section(section):
             self.config_parser.add_section(section)
-        self.config_parser[section][key] = value
+        self.config_parser[section][key] = str(value)
 
     def set_conf_list(self, section, values):
         if not self.config_parser.has_section(section):

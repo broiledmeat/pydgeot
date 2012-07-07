@@ -24,11 +24,18 @@ class PydgeotCore:
             return section in self.config_parser
         return section in self.config_parser and key in self.config_parser[section]
 
-    def get_conf(self, section, key=None):
+    def get_conf(self, section, key=None, type=None):
         if key is None:
             return list(self.config_parser[section].items())
         else:
-            return self.config_parser[section][key]
+            if type in (None, str):
+                return self.config_parser[section][key]
+            elif type is int:
+                return self.config_parser[section].getint(key)
+            elif type is float:
+                return self.config_parser[section].getfloat(key)
+            elif type is bool:
+                return self.config_parser[section].getboolean(key)
 
     def get_conf_list(self, section, key=None, delimiter=','):
         if key is None:

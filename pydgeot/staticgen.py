@@ -6,10 +6,18 @@ import os
 import shutil
 import csv
 import re
+from . import PydgeotCore, abspath
 from .handlers import get_handler
-from .render import render
 
-class _ChangeSet(object):
+CONFIG_DEFAULTS = {
+    'staticgen': {
+        'data_store_file': './.pydgeot.db',
+        'force_generate': 'no'
+    },
+    'ignore_paths': []
+}
+
+class _ChangeSet:
     """
     Holds lists of file paths to copy and delete
     """
@@ -35,51 +43,46 @@ class _ChangeSet(object):
         self.copy |= other.copy
         self.delete |= other.delete
 
-class StaticGen(object):
+class StaticGen(PydgeotCore):
     """
     Creates and updates a copy of directory contents, rendering files where handlers are available. Tracks file
     changes so only necessary copying and deletion is done.
     """
-    DEFAULT_DEPENDENCY_MAP_FILENAME = '.pydgeot_staticgen_data'
-    DEFAULT_FORCE_GENERATE = False
-
-    ## These regexes apply to paths relative to the source root path
-    # Ignore completely
-    DEFAULT_IGNORE_PATHS = ['^\.templates(/.*)?$']
-
     def __init__(self,
                  source_root=None,
                  target_root=None,
-                 dependency_map_filename=DEFAULT_DEPENDENCY_MAP_FILENAME,
-                 ignore_paths=DEFAULT_IGNORE_PATHS,
-                 force_generate=DEFAULT_FORCE_GENERATE):
+                 config_file=PydgeotCore.DEFAULT_CONFIG_FILE,
+                 config={}):
         """
         Initialises StaticGen
 
         Args:
             source_root (str): Directory root to copy from.
             target_root (str): Directory root to copy to.
-            dependency_map_filename (str): Filename to keep track of file dependencies in. Stored in target_root.
-            ignore_paths (list(str)): List of regexes to match file paths against for ignoring completely.
-            force_generate (bool): Don't throw an error if target_root exists and does not contain data_filename.
+            config_file (str): Filepath to load configuration from.
+            config (dict): Additional configuration to load.
         Raises:
             IOError: If source_root is not a directory, or data_filename does not exist in target_root (unless
                      force_generate is set.)
         """
-        self.source_root = os.path.abspath(os.path.expanduser(source_root))
-        self.target_root = os.path.abspath(os.path.expanduser(target_root))
-        self.dependency_map_filename = dependency_map_filename
-        self.ignore_paths = [re.compile(path) for path in ignore_paths]
-        self.force_generate = force_generate
+        PydgeotCore.__init__(self, source_root, config_file)
 
-        self.dependency_map_path = os.path.join(self.target_root, self.dependency_map_filename)
-        dependency_map_exists = os.path.isfile(self.dependency_map_path)
-        
+        self.load_conf_dict(CONFIG_DEFAULTS)
+        self.load_conf_dict(config)
+
+        self.target_root = abspath(target_root)
+        self.data_store_file = abspath(os.path.join(self.target_root, self.get_conf('staticgen', 'data_store_file')))
+        self.force_generate = self.get_conf('staticgen', 'force_generate', bool)
+        self.ignore_paths = [re.compile(path)
+                             for path in self.get_conf_list('ignore_paths')]
+
+        data_store_exists = os.path.isfile(self.data_store_file)
+
         if not os.path.isdir(self.source_root):
             raise IOError('Missing source directory', self.source_root)
 
-        if not self.force_generate and (os.path.isdir(self.target_root) and not dependency_map_exists):
-            raise IOError('Missing dependency map file', self.dependency_map_path)
+        if not self.force_generate and (os.path.isdir(self.target_root) and not data_store_exists):
+            raise IOError('Missing dependency map file', self.data_store_file)
 
         self.dependencies = {}
 
@@ -107,8 +110,8 @@ class StaticGen(object):
             None
         """
         self.dependencies = {}
-        if os.path.isfile(self.dependency_map_path):
-            data_file = open(self.dependency_map_path)
+        if os.path.isfile(self.data_store_file):
+            data_file = open(self.data_store_file)
             for parent, *children in csv.reader(data_file):
                 self.dependencies[parent] = set(children)
 
@@ -120,7 +123,7 @@ class StaticGen(object):
             None
         Returns None
         """
-        data_file = open(self.dependency_map_path, 'w')
+        data_file = open(self.data_store_file, 'w')
         writer = csv.writer(data_file)
         for parent, items in self.dependencies.items():
             items = list(items)
@@ -159,9 +162,10 @@ class StaticGen(object):
 
         # Any files in target_filenames but not in source_filenames is marked for deletion. Remove the dependency map
         # file if it has been marked.
-        change_set.delete |= set([os.path.join(target_dir, filename) for filename in target_filenames.keys() - source_filenames.keys()])
-        if self.dependency_map_path in change_set.delete:
-            change_set.delete.remove(self.dependency_map_path)
+        change_set.delete |= set([os.path.join(target_dir, filename)
+                                  for filename in target_filenames.keys() - source_filenames.keys()])
+        if self.data_store_file in change_set.delete:
+            change_set.delete.remove(self.data_store_file)
 
         # Iterate over files in source_filenames but not in target_filenames
         changed_filenames = [filename for filename, mtime in source_filenames.items() - target_filenames.items()]
@@ -169,9 +173,9 @@ class StaticGen(object):
             relative_path = os.path.join(relative_dir, filename)
             source_path = os.path.join(source_dir, filename)
             target_path = os.path.join(target_dir, filename)
-            
+
             is_ignored = any([regex.match(relative_path) for regex in self.ignore_paths])
-            if not is_ignored:
+            if not is_ignored and source_path != self.config_file:
                 # If the path is a directory, collect changes for it and merge in with the current change set
                 if os.path.isdir(source_path):
                     change_set.merge(self._collect_changes(relative_path))

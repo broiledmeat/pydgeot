@@ -5,12 +5,19 @@ from pydgeot.handlers import get_handlers
 parser = argparse.ArgumentParser()
 parser.add_argument('source_root', metavar='SOURCE_PATH')
 parser.add_argument('target_root', metavar='TARGET_PATH')
-parser.add_argument('-f', '--force-generate', default=StaticGen.DEFAULT_FORCE_GENERATE, action='store_true', required=False)
-parser.add_argument('--ignore-matches', dest='ignore_paths', default=StaticGen.DEFAULT_IGNORE_PATHS, help='File regexes to ignore.')
+parser.add_argument('-c', '--config', dest='config_file',  default=StaticGen.DEFAULT_CONFIG_FILE, help='Config file to load')
+parser.add_argument('-f', '--force-generate', default=False, action='store_true', required=False)
+parser.add_argument('--ignore-matches', dest='ignore_paths', help='File regexes to ignore.')
 args = vars(parser.parse_args())
 
+config = {
+    'staticgen': {
+        'force_generate': args['force_generate']
+    }
+}
+
 if isinstance(args['ignore_paths'], str):
-    args['ignore_paths'] = str(args['ignore_paths']).split(',')
+    config['ignore_paths'] = args['ignore_paths'].split(',')
 
 for handler in get_handlers():
     if hasattr(handler, 'desc'):
@@ -19,7 +26,7 @@ for handler in get_handlers():
         print('Available renderer: {0}'.format(handler.uris.pattern))
 
 try:
-    gen_static = StaticGen(**args)
+    gen_static = StaticGen(args['source_root'], args['target_root'], args['config_file'], config)
     gen_static.generate()
 except IOError as e:
     print(str(e))

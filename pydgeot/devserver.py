@@ -10,14 +10,14 @@ import urllib.parse
 from . import PydgeotCore, abspath
 
 CONFIG_DEFAULTS = {
-    'server': {
-        'address': 'localhost',
-        'port': '8000',
-    },
-    'server_index_files': [
-        'index.html'
-    ],
-    'server_url_redirects': {}
+    "devserver": {
+        "address": "localhost",
+        "port": 8000,
+        "index_files":[
+            "index.html"
+        ],
+        "redirects": {}
+    }
 }
 
 class Server(PydgeotCore, HTTPServer):
@@ -36,16 +36,15 @@ class Server(PydgeotCore, HTTPServer):
             config_file (str): Filepath to load configuration from.
             config (dict): Additional configuration to load.
         """
+        self.append_config(CONFIG_DEFAULTS)
         PydgeotCore.__init__(self, source_root, config_file)
+        self.append_config(config)
 
-        self.load_conf_dict(CONFIG_DEFAULTS)
-        self.load_conf_dict(config)
-
-        self.address = self.get_conf('server', 'address')
-        self.port = self.get_conf('server', 'port', int)
-        self.index_files = self.get_conf_list('server_index_files')
+        self.address = self.config['devserver']['address']
+        self.port = self.config['devserver']['port']
+        self.index_files = self.config['devserver']['index_files']
         self.url_redirects = [(re.compile('^/{0}(/.*)?$'.format(url.strip('/'))), abspath(path))
-                              for url, path in self.get_conf('server_url_redirects')]
+                              for url, path in self.config['devserver']['redirects'].items()]
 
         HTTPServer.__init__(self, (self.address, self.port), RequestHandler)
 
@@ -111,12 +110,13 @@ class RequestHandler(BaseHTTPRequestHandler):
             if index_path is not None:
                 source_path = index_path
 
-        # If source_path is a directory (and thus no index file was found,) serve a generated index
-        if os.path.isdir(source_path):
-            return self.serve_index(source_path)
-        elif not os.path.isfile(source_path):
+        # If the file should be ignored, or doesn't exist, 404
+        if self.server.is_ignored(self.path, source_path) or not os.path.isfile(source_path):
             self.send_error(404, 'File Not Found: ' + source_path)
             return
+        # If source_path is a directory (and thus no index file was found,) serve a generated index
+        elif os.path.isdir(source_path):
+            return self.serve_index(source_path)
 
         # Guess the mimetype and set headers
         mimetype = mimetypes.guess_type(source_path)[0]

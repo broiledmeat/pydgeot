@@ -5,26 +5,25 @@ from pydgeot.handlers import get_handlers
 parser = argparse.ArgumentParser()
 parser.add_argument('source_root', metavar='SOURCE_PATH')
 parser.add_argument('-c', '--config', dest='config_file',  default=Server.DEFAULT_CONFIG_FILE, help='Config file to load')
-parser.add_argument('-p', '--port', help='Port to serve on')
+parser.add_argument('-p', '--port', type=int, help='Port to serve on')
 parser.add_argument('-a', '--address', help='Address to serve on')
 parser.add_argument('-i', '--index-files', dest='index_files', help='Comma separated index files list')
 parser.add_argument('-u', '--url-redirects', dest='url_redirects', help='Comma seperated url rewrite pairs')
 args = vars(parser.parse_args())
 
-config = { 'server': {} }
+config = { 'devserver': {} }
 
 if args['address'] is not None:
-    config['server']['address'] = args['address']
+    config['devserver']['address'] = args['address']
 if args['port'] is not None:
-    config['server']['port'] = args['port']
+    config['devserver']['port'] = args['port']
 
 # Split render_paths and/or index_files in to lists
-if isinstance(args['index_files'], str):
-    config['server_index_files'] = args['index_files'].split(',')
-if isinstance(args['url_redirects'], str):
+if args['index_files'] is not None:
+    config['devserver']['index_files!'] = args['index_files'].split(',')
+if args['url_redirects'] is not None:
     urls = args['url_redirects'].split(',')
-    config['server_url_redirects'] = dict(zip(urls[::2], urls[1::2]))
-
+    config['devserver']['redirects!'] = dict(zip(urls[::2], urls[1::2]))
 
 server = Server(args['source_root'], args['config_file'], config)
 

@@ -11,10 +11,9 @@ from .handlers import get_handler
 
 CONFIG_DEFAULTS = {
     'staticgen': {
-        'data_store_file': './.pydgeot.db',
-        'force_generate': 'no'
-    },
-    'ignore_paths': []
+        'db_file': './.pydgeot.db',
+        'force_generate': False
+    }
 }
 
 class _ChangeSet:
@@ -65,16 +64,13 @@ class StaticGen(PydgeotCore):
             IOError: If source_root is not a directory, or data_filename does not exist in target_root (unless
                      force_generate is set.)
         """
+        self.append_config(CONFIG_DEFAULTS)
         PydgeotCore.__init__(self, source_root, config_file)
-
-        self.load_conf_dict(CONFIG_DEFAULTS)
-        self.load_conf_dict(config)
+        self.append_config(config)
 
         self.target_root = abspath(target_root)
-        self.data_store_file = abspath(os.path.join(self.target_root, self.get_conf('staticgen', 'data_store_file')))
-        self.force_generate = self.get_conf('staticgen', 'force_generate', bool)
-        self.ignore_paths = [re.compile(path)
-                             for path in self.get_conf_list('ignore_paths')]
+        self.data_store_file = abspath(os.path.join(self.target_root, self.config['staticgen']['db_file']))
+        self.force_generate = self.config['staticgen']['force_generate']
 
         data_store_exists = os.path.isfile(self.data_store_file)
 
@@ -174,8 +170,7 @@ class StaticGen(PydgeotCore):
             source_path = os.path.join(source_dir, filename)
             target_path = os.path.join(target_dir, filename)
 
-            is_ignored = any([regex.match(relative_path) for regex in self.ignore_paths])
-            if not is_ignored and source_path != self.config_file:
+            if not self.is_ignored(relative_path, source_path):
                 # If the path is a directory, collect changes for it and merge in with the current change set
                 if os.path.isdir(source_path):
                     change_set.merge(self._collect_changes(relative_path))

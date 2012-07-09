@@ -1,6 +1,14 @@
 import os
-import configparser
+import re
+import json
 from collections import namedtuple
+
+CONFIG_DEFAULTS = {
+    "ignore": {
+        "dot_files": False,
+        "paths": []
+    }
+}
 
 def abspath(path):
     return os.path.abspath(os.path.expanduser(path))
@@ -11,134 +19,46 @@ class PydgeotCore:
     """
     Base class providing access to configuration information and content rendering.
     """
-    DEFAULT_CONFIG_FILE = './.pydgeot.conf'
+    DEFAULT_CONFIG_FILE = './.pydgeotconf.json'
 
     def __init__(self, source_root, config_file=DEFAULT_CONFIG_FILE):
         self.source_root = abspath(source_root)
         self.config_file = abspath(os.path.join(source_root, config_file))
 
-        self.config_parser = configparser.ConfigParser(allow_no_value=True)
-
         if os.path.isfile(self.config_file):
-            self.config_parser.read(self.config_file)
+            self.append_config(json.loads(open(self.config_file).read()))
 
-    def has_conf(self, section, key=None):
-        """
-        Check a section or a section key for existance.
+    def append_config(self, config):
+        if not hasattr(self, 'config'):
+            self.config = {}
+        self._append_config_dict(self.config, config)
 
-        Args:
-            section (str): Section name to check.
-            key (str): Optional. Key name to check.
-        Returns:
-            bool: True if the section or section key exists.
-        """
-        if key is None:
-            return section in self.config_parser
-        return section in self.config_parser and key in self.config_parser[section]
+    def _append_config_dict(self, target, source):
+        for key, value in source.items():
+            override = key.endswith('!')
+            key = key.rstrip('!')
+            in_target = isinstance(target, dict) and key in target
 
-    def get_conf(self, section, key=None, type=None):
-        """
-        Get the value for a section key. If no key is provided, a list of key/value tuples for the section will be
-        returned.
+            if isinstance(value, dict):
+                if override or not in_target or not isinstance(target[key], dict):
+                    target[key] = {}
+                self._append_config_dict(target[key], value)
+                continue
+            elif not override and in_target and isinstance(value, list):
+                target[key] += value
+                print('APPEND ' + key)
+                continue
+            target[key] = value
 
-        Args:
-            section (str): Section name.
-            key (str): Optional. Section key name.
-            type (type): Optional. Return a section keys value as a specific type. Defaults to str.
-        Returns:
-            object or list(tuple(str, str)): The section keys value if key is specified, otherwise a list of tuples
-                                             containing key names and values in the section.
-        """
-        if key is None:
-            return list(self.config_parser[section].items())
-        else:
-            if type in (None, str):
-                return self.config_parser[section][key]
-            elif type is int:
-                return self.config_parser[section].getint(key)
-            elif type is float:
-                return self.config_parser[section].getfloat(key)
-            elif type is bool:
-                return self.config_parser[section].getboolean(key)
-
-    def get_conf_list(self, section, key=None, delimiter=','):
-        """
-        Get the value for a section key as a list. If only a section name is provided, the sections key names will be
-        returned.
-
-        Args:
-            section (str): Section name.
-            key (str): Optional. Section key name.
-            delimiter (str): Optional. String to split the section keys value with.
-        Returns:
-            list(str): A section keys values after being split by the delimiter, or a sections key names.
-        """
-        if key is None:
-            return list(self.config_parser[section].keys())
-        else:
-            return self.config_parser[section][key].split(delimiter)
-
-    def get_conf_sections(self):
-        """
-        Get a list of section names.
-
-        Args:
-            None
-        Return:
-            list(str)
-        """
-        return list(self.config_parser.sections())
-
-    def set_conf(self, section, key, value):
-        """
-        Set a section keys value, creating the section if needed.
-
-        Args:
-            section (str): Section name.
-            key (str): Key name.
-            value (str): Section keys value.
-        Returns:
-            None
-        """
-        if not self.config_parser.has_section(section):
-            self.config_parser.add_section(section)
-        self.config_parser[section][key] = str(value)
-
-    def set_conf_list(self, section, values):
-        """
-        Set a sections key names.
-
-        Args:
-            section (str): Section name.
-            values (list(str)): List of key names.
-        Returns:
-            None
-        """
-        if not self.config_parser.has_section(section):
-            self.config_parser.add_section(section)
-        for value in values:
-            self.config_parser[section][value] = None
-
-    def load_conf_dict(self, conf):
-        """
-        Load config values from a dictionary.
-
-        The keys are used as section names, and must be strings.
-        The values can either be dict(str, str) or list(str).
-        If the values are dictionaries, the keys and values will be added to the section. If the values are lists,
-        then the items will be used as key names, with no values.
-
-        Args:
-            conf (dict): Dictionary to load.
-        Returns:
-            None
-        """
-        for section, section_value in conf.items():
-            if isinstance(section_value, dict):
-                for key, value in section_value.items():
-                    self.set_conf(section, key, value)
-            elif isinstance(section_value, list):
-                self.set_conf_list(section, section_value)
+    def is_ignored(self, *paths):
+        for path in paths:
+            if path == self.config_file:
+                return True
+            if self.config['ignore']['dot_files'] and any(part.startswith('.') for part in path.split(os.path.sep)):
+                return True
+            if any([re.match(regex, path) for regex in self.config['ignore']['paths']]):
+                return True
+        return False
 
     def render(self, source_path):
         """

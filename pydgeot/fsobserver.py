@@ -24,7 +24,7 @@ if sys.platform == 'linux':
                     pyinotify.IN_MOVED_TO
                 wm = pyinotify.WatchManager()
                 notifier = pyinotify.Notifier(wm, self)
-                wm.add_watch(path, mask, rec=True)
+                wm.add_watch(self.path, mask, rec=True)
                 notifier.loop()
             def process_default(self, e):
                 self.on_changed(e.pathname)

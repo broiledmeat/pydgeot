@@ -54,7 +54,7 @@ class App:
                         self._commands.update(commands.available[plugin])
 
             # Sort processors by priority
-            self._processors = sorted(self._processors, lambda p: p.priority, reverse=True)
+            self._processors = sorted(self._processors, key=lambda p: p.priority, reverse=True)
 
     def command(self, name, *args):
         if name in self._commands:

@@ -1,6 +1,7 @@
 def create(app, path):
     import os
-    from .. import CommandError
+    from pydgeot.commands import CommandError
+    from pydgeot.app import App
 
     root = os.path.abspath(os.path.expanduser(os.path.join(os.getcwd(), path)))
     parent = os.path.split(root)[0]
@@ -10,12 +11,14 @@ def create(app, path):
     if os.path.exists(root):
         raise CommandError('Target directory \'{0}\' already exists'.format(root))
 
-    os.makedirs(os.path.join(root, 'content'))
-    os.makedirs(os.path.join(root, 'store', 'logs'))
-    os.makedirs(os.path.join(root, 'plugins'))
-    os.makedirs(os.path.join(root, 'build'))
+    app = App(root)
+    os.makedirs(app.content_root)
+    os.makedirs(app.store_root)
+    os.makedirs(app.log_root)
+    os.makedirs(app.plugins_root)
+    os.makedirs(app.build_root)
 
-    conf_file = open(os.path.join(root, 'pydgeot.json'), 'w')
+    conf_file = open(app.config_path, 'w')
     conf_file.write('{}')
     conf_file.close()
 

@@ -18,6 +18,7 @@ class JinjaProcessor(Processor):
             template = env.from_string(content)
             rel = os.path.relpath(path, self.app.content_root)
             target = os.path.join(self.app.build_root, rel)
+            os.makedirs(os.path.dirname(target), exist_ok=True)
             f = open(target, 'w')
             f.write(template.render())
             f.close()

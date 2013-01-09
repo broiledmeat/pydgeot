@@ -18,7 +18,13 @@ class App:
         raise_invalid = root is not None
         root = root if root is not None else './'
         self.root = os.path.abspath(os.path.expanduser(root))
-        self.is_valid = os.path.isdir(self.root) and os.path.isfile(os.path.join(self.root, 'pydgeot.json'))
+        self.content_root = os.path.join(self.root, 'content')
+        self.store_root = os.path.join(self.root, 'store')
+        self.log_root = os.path.join(self.store_root, 'log')
+        self.build_root = os.path.join(self.root, 'build')
+        self.plugins_root = os.path.join(self.root,' plugins')
+        self.config_path = os.path.join(self.root, 'pydgeot.json')
+        self.is_valid = os.path.isdir(self.root) and os.path.isfile(self.config_path)
 
         if not self.is_valid and raise_invalid:
             raise InvalidAppRoot('App root \'{0}\' does not exist or not a valid app directory.'.format(self.root))
@@ -32,16 +38,16 @@ class App:
 
         if self.is_valid:
             # Get settings
-            self.settings = json.load(open(os.path.join(self.root, 'pydgeot.json')))
+            self.settings = json.load(open(self.config_path))
 
             # Add processor builtins to syspath
             pkg = pkgutil.get_loader('pydgeot.processors.builtins')
             sys.path.insert(0, pkg._path._path[0])
 
             # Load plugins
-            plugins_path = os.path.join(self.root, 'plugins')
-            if os.path.isdir(plugins_path) and 'plugins' in self.settings:
-                sys.path.insert(0, plugins_path)
+            if 'plugins' in self.settings:
+                if os.path.isdir(self.plugins_root):
+                    sys.path.insert(0, self.plugins_root)
                 for plugin in self.settings['plugins']:
                     try:
                         importlib.import_module(plugin)
@@ -55,6 +61,12 @@ class App:
 
             # Sort processors by priority
             self._processors = sorted(self._processors, key=lambda p: p.priority, reverse=True)
+
+    def processor(self, path):
+        for processor in self._processors:
+            if processor.can_process(path):
+                return processor
+        return None
 
     def command(self, name, *args):
         if name in self._commands:

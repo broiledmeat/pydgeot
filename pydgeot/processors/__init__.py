@@ -10,9 +10,7 @@ class Processor:
         return False
     def process(self, path):
         return []
-    def get_targets(self, path):
-        return []
-    def get_dependences(self, path):
+    def get_dependencies(self, path):
         return []
 
 class register:

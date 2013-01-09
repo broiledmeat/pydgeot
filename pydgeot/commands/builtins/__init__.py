@@ -5,4 +5,4 @@ from pydgeot.commands.builtins.list_commands import list_commands
 
 register(name='commands', help='List available commands')(list_commands)
 register(help_args='PATH', help='Generate a new Pydgeot app directory')(create)
-register(help='Build static content')(generate)
+register(help_args='[wipe]', help='Build static content')(generate)

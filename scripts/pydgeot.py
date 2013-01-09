@@ -25,4 +25,4 @@ if __name__ == '__main__':
     if args['commands']:
         args['<command>'] = 'commands'
 
-    app.command(args['<command>'], *args['<args>'])
+    app.run_command(args['<command>'], *args['<args>'])

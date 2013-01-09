@@ -35,17 +35,17 @@ class Generator:
         print('DELETE', changes.delete)
 
         for path in changes.delete:
-            for target in self.filemap.targets(path):
-                os.remove(target)
-            os.remove(path)
-            self.filemap.remove(path)
+            for target in self.filemap.get_targets(path):
+                if os.path.isfile(target):
+                    os.remove(target)
+            self.filemap.remove_source(path)
 
         for path in changes.create | changes.update:
-            processor = self.app.processor(path)
+            processor = self.app.get_processor(path)
             if processor is not None:
                 print('Processing {0} with {1}'.format(os.path.relpath(path, self.app.content_root), processor.__class__.__name__))
-                self.filemap.dependencies(path, processor.get_dependencies(path))
-                self.filemap.targets(path, processor.process(path))
+                self.filemap.set_dependencies(path, processor.get_dependencies(path))
+                self.filemap.set_targets(path, processor.process(path))
         self.filemap.commit()
 
     def collect_changes(self, root=None):
@@ -55,7 +55,7 @@ class Generator:
 
         dirs = set()
 
-        old_sources = self.filemap.sources(root, mtimes=True)
+        old_sources = self.filemap.get_sources(root, mtimes=True)
         current_sources = []
         for filename in os.listdir(root):
             path = os.path.join(root, filename)

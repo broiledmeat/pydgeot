@@ -62,13 +62,13 @@ class App:
             # Sort processors by priority
             self._processors = sorted(self._processors, key=lambda p: p.priority, reverse=True)
 
-    def processor(self, path):
+    def get_processor(self, path):
         for processor in self._processors:
             if processor.can_process(path):
                 return processor
         return None
 
-    def command(self, name, *args):
+    def run_command(self, name, *args):
         if name in self._commands:
             command = self._commands[name]
             args_len = len(args) + 1

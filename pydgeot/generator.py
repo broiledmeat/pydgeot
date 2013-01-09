@@ -44,7 +44,7 @@ class Generator:
             processor = self.app.processor(path)
             if processor is not None:
                 print('Processing {0} with {1}'.format(os.path.relpath(path, self.app.content_root), processor.__class__.__name__))
-                self.filemap.dependencies(path, processor.get_dependences(path))
+                self.filemap.dependencies(path, processor.get_dependencies(path))
                 self.filemap.targets(path, processor.process(path))
         self.filemap.commit()
 

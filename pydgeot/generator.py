@@ -44,8 +44,18 @@ class Generator:
             processor = self.app.get_processor(path)
             if processor is not None:
                 print('Processing {0} with {1}'.format(os.path.relpath(path, self.app.content_root), processor.__class__.__name__))
-                self.filemap.set_dependencies(path, processor.get_dependencies(path))
-                self.filemap.set_targets(path, processor.process(path))
+                try:
+                    dependencies = processor.get_dependencies(path)
+                except Exception as e:
+                    print('Exception occurred getting dependencies:', e)
+                    continue
+                try:
+                    targets = processor.process(path)
+                except Exception as e:
+                    print('Exception occurred while processing:', e)
+                    continue
+                self.filemap.set_dependencies(path, dependencies)
+                self.filemap.set_targets(path, targets)
         self.filemap.commit()
 
     def collect_changes(self, root=None):

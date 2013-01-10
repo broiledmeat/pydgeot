@@ -40,6 +40,11 @@ class Generator:
                     os.remove(target)
             self.filemap.remove_source(path)
 
+        dependencies = set()
+        for path in changes.update:
+            dependencies |= set(self.filemap.get_dependencies(path, reverse=True))
+        changes.update |= dependencies
+
         for path in changes.create | changes.update:
             processor = self.app.get_processor(path)
             if processor is not None:

@@ -112,7 +112,7 @@ class FileMap:
         rel = self._relative_path(source)
         if reverse:
             results = self.cursor.execute("""
-                SELECT d.path
+                SELECT s.path
                 FROM source_dependencies AS sd
                     INNER JOIN sources s ON s.id = sd.source_id
                     INNER JOIN sources d ON d.id = sd.dependency_id
@@ -126,7 +126,7 @@ class FileMap:
                     INNER JOIN sources d ON d.id = sd.dependency_id
                 WHERE s.path = ?
                 """, (rel, ))
-        return [self._target_path(result[0]) for result in results]
+        return [self._source_path(result[0]) for result in results]
 
     def set_dependencies(self, source, values):
         rel = self._relative_path(source)

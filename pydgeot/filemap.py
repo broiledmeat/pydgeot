@@ -51,6 +51,9 @@ class FileMap:
         self.cursor.execute("DELETE FROM source_dependencies")
         self.cursor.execute("DELETE FROM source_targets")
         self.cursor.execute("DELETE FROM sources")
+        self.cursor.execute("delete from sqlite_sequence where name='source_dependencies'")
+        self.cursor.execute("delete from sqlite_sequence where name='source_targets'")
+        self.cursor.execute("delete from sqlite_sequence where name='sources'")
         self.commit()
 
     def get_sources(self, prefix=None, mtimes=False):
@@ -105,15 +108,24 @@ class FileMap:
                 VALUES (?, ?)
             """, ([(id, self._relative_path(value)) for value in values]))
 
-    def get_dependencies(self, source):
+    def get_dependencies(self, source, reverse=False):
         rel = self._relative_path(source)
-        results = self.cursor.execute("""
-            SELECT d.path
-            FROM source_dependencies AS sd
-                INNER JOIN sources s ON s.id = sd.source_id
-                INNER JOIN sources d ON d.id = sd.dependency_id
-            WHERE s.path = ?
-            """, (rel, ))
+        if reverse:
+            results = self.cursor.execute("""
+                SELECT d.path
+                FROM source_dependencies AS sd
+                    INNER JOIN sources s ON s.id = sd.source_id
+                    INNER JOIN sources d ON d.id = sd.dependency_id
+                WHERE d.path = ?
+                """, (rel, ))
+        else:
+            results = self.cursor.execute("""
+                SELECT d.path
+                FROM source_dependencies AS sd
+                    INNER JOIN sources s ON s.id = sd.source_id
+                    INNER JOIN sources d ON d.id = sd.dependency_id
+                WHERE s.path = ?
+                """, (rel, ))
         return [self._target_path(result[0]) for result in results]
 
     def set_dependencies(self, source, values):
@@ -145,8 +157,16 @@ class FileMap:
         except FileNotFoundError:
             size = 0
             mtime = 0
+
+        self.cursor.execute("SELECT id, size, modified FROM sources WHERE path = ?", (rel, ))
+        result = self.cursor.fetchone()
+        if result is not None:
+            if size != result[1] or mtime != result[2]:
+                self.cursor.execute("UPDATE sources SET size = ?, modified = ? WHERE id = ?", (size, mtime, result[0]))
+            return result[0]
+
         self.cursor.execute("""
-            INSERT OR REPLACE INTO sources
+            INSERT INTO sources
                 (path, size, modified)
                 VALUES (?, ?, ?)
                 """, (rel, size, mtime))

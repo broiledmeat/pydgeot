@@ -42,6 +42,9 @@ class Generator:
                 sources = self.filemap.get_targets(target, reverse=True)
                 if len(sources) <= 1 and os.path.isfile(target):
                     os.remove(target)
+                    dir = os.path.dirname(target)
+                    if not os.listdir(dir):
+                        os.rmdir(dir)
             self.filemap.remove_source(path)
 
         dependencies = set()

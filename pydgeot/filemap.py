@@ -80,7 +80,7 @@ class FileMap:
             WHERE path = ?
             """, (rel, ))
 
-    def get_targets(self, source, reverse=True):
+    def get_targets(self, source, reverse=False):
         rel = self._relative_path(source)
         if reverse:
             results = self.cursor.execute("""

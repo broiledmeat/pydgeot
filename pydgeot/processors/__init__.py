@@ -8,7 +8,11 @@ class Processor:
         self.app = app
     def can_process(self, path):
         return False
-    def process(self, path):
+    def process_create(self, path):
+        return self.process_update(path)
+    def process_update(self, path):
+        return []
+    def process_delete(self, path):
         return []
     def get_dependencies(self, path):
         return []

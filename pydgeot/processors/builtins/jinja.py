@@ -11,7 +11,7 @@ class JinjaProcessor(Processor):
     def can_process(self, path):
         return path.endswith('.html')
 
-    def process(self, path):
+    def process_update(self, path):
         if not self._has_template_flag(path):
             env = self._get_env(self.app.content_root)
             content = open(path).read()

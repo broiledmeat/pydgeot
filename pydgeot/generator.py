@@ -35,8 +35,12 @@ class Generator:
         print('DELETE', changes.delete)
 
         for path in changes.delete:
+            processor = self.app.get_processor(path)
+            if processor is not None:
+                processor.process_delete(path)
             for target in self.filemap.get_targets(path):
-                if os.path.isfile(target):
+                sources = self.filemap.get_targets(target, reverse=True)
+                if len(sources) <= 1 and os.path.isfile(target):
                     os.remove(target)
             self.filemap.remove_source(path)
 
@@ -55,7 +59,8 @@ class Generator:
                     print('Exception occurred getting dependencies:', e)
                     continue
                 try:
-                    targets = processor.process(path)
+                    proc_func = processor.process_create if path in changes.create else processor.process_update
+                    targets = proc_func(path)
                 except Exception as e:
                     print('Exception occurred while processing:', e)
                     continue

@@ -80,15 +80,24 @@ class FileMap:
             WHERE path = ?
             """, (rel, ))
 
-    def get_targets(self, source):
+    def get_targets(self, source, reverse=True):
         rel = self._relative_path(source)
-        results = self.cursor.execute("""
-            SELECT st.path
-            FROM source_targets AS st
-                INNER JOIN sources s ON s.id = st.source_id
-            WHERE s.path = ?
-            """, (rel, ))
-        return [self._target_path(result[0]) for result in results]
+        if reverse:
+            results = self.cursor.execute("""
+                SELECT s.path
+                FROM source_targets AS st
+                    INNER JOIN sources s ON s.id = st.source_id
+                WHERE st.path = ?
+                """, (rel, ))
+            return [self._source_path(result[0]) for result in results]
+        else:
+            results = self.cursor.execute("""
+                SELECT st.path
+                FROM source_targets AS st
+                    INNER JOIN sources s ON s.id = st.source_id
+                WHERE s.path = ?
+                """, (rel, ))
+            return [self._target_path(result[0]) for result in results]
 
     def set_targets(self, source, values):
         rel = self._relative_path(source)

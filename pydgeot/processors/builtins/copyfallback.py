@@ -9,7 +9,7 @@ class CopyFallbackProcessor(Processor):
     def can_process(self, path):
         return True
 
-    def process(self, path):
+    def process_update(self, path):
         rel = os.path.relpath(path, self.app.content_root)
         target = os.path.join(self.app.build_root, rel)
         os.makedirs(os.path.dirname(target), exist_ok=True)

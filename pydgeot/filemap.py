@@ -74,11 +74,13 @@ class FileMap:
 
     def remove_source(self, source):
         rel = self._relative_path(source)
-        self.cursor.execute("""
-            DELETE
-            FROM sources
-            WHERE path = ?
-            """, (rel, ))
+        self.cursor.execute("SELECT id FROM sources WHERE path = ?", (rel, ))
+        result = self.cursor.fetchone()
+        if result is not None:
+            id = result[0]
+            self.cursor.execute("DELETE FROM source_targets WHERE source_id = ?", (id, ))
+            self.cursor.execute("DELETE FROM source_dependencies WHERE source_id = ? OR dependency_id = ?", (id, id))
+            self.cursor.execute("DELETE FROM sources WHERE id = ?", (id, ))
 
     def get_targets(self, source, reverse=False):
         rel = self._relative_path(source)

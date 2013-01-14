@@ -22,7 +22,7 @@ class App:
         self.store_root = os.path.join(self.root, 'store')
         self.log_root = os.path.join(self.store_root, 'log')
         self.build_root = os.path.join(self.root, 'build')
-        self.plugins_root = os.path.join(self.root,' plugins')
+        self.plugins_root = os.path.join(self.root, 'plugins')
         self.config_path = os.path.join(self.root, 'pydgeot.json')
         self.is_valid = os.path.isdir(self.root) and os.path.isfile(self.config_path)
 

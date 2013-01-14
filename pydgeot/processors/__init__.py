@@ -13,7 +13,7 @@ class Processor:
     def process_update(self, path):
         return []
     def process_delete(self, path):
-        return []
+        pass
     def get_dependencies(self, path):
         return []
     def wipe(self):

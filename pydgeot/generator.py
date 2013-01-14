@@ -18,9 +18,12 @@ class Generator:
         self.filemap = FileMap(app, os.path.join(app.store_root, 'filemap.db'))
 
     def wipe(self):
-        print('WIPE')
         if os.path.isdir(self.app.build_root):
-            shutil.rmtree(self.app.build_root)
+            for root, dirs, files in os.walk(self.app.build_root, topdown=False, followlinks=False):
+                for name in files:
+                    os.remove(os.path.join(root, name))
+                for name in dirs:
+                    os.rmdir(os.path.join(root, name))
         self.filemap.wipe()
 
     def generate(self):

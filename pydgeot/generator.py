@@ -18,6 +18,8 @@ class Generator:
         self.filemap = FileMap(app, os.path.join(app.store_root, 'filemap.db'))
 
     def wipe(self):
+        for processor in self.app._processors:
+            processor.wipe()
         if os.path.isdir(self.app.build_root):
             for root, dirs, files in os.walk(self.app.build_root, topdown=False, followlinks=False):
                 for name in files:

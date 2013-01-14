@@ -16,6 +16,8 @@ class Processor:
         return []
     def get_dependencies(self, path):
         return []
+    def wipe(self):
+        pass
 
 class register:
     def __init__(self):

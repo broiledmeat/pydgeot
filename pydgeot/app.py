@@ -17,13 +17,13 @@ class App:
         # If it is set, and the directory is invalid, then raise InvalidAppRoot
         raise_invalid = root is not None
         root = root if root is not None else './'
-        self.root = os.path.abspath(os.path.expanduser(root))
-        self.content_root = os.path.join(self.root, 'content')
-        self.store_root = os.path.join(self.root, 'store')
-        self.log_root = os.path.join(self.store_root, 'log')
-        self.build_root = os.path.join(self.root, 'build')
-        self.plugins_root = os.path.join(self.root, 'plugins')
-        self.config_path = os.path.join(self.root, 'pydgeot.json')
+        self.root = os.path.realpath(os.path.abspath(os.path.expanduser(root)))
+        self.content_root = os.path.realpath(os.path.join(self.root, 'content'))
+        self.store_root = os.path.realpath(os.path.join(self.root, 'store'))
+        self.log_root = os.path.realpath(os.path.join(self.store_root, 'log'))
+        self.build_root = os.path.realpath(os.path.join(self.root, 'build'))
+        self.plugins_root = os.path.realpath(os.path.join(self.root, 'plugins'))
+        self.config_path = os.path.realpath(os.path.join(self.root, 'pydgeot.json'))
         self.is_valid = os.path.isdir(self.root) and os.path.isfile(self.config_path)
 
         if not self.is_valid and raise_invalid:

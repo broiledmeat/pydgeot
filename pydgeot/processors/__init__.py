@@ -16,6 +16,8 @@ class Processor:
         pass
     def get_dependencies(self, path):
         return []
+    def process_changes_complete(self):
+        pass
     def wipe(self):
         pass
 

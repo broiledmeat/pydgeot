@@ -76,6 +76,9 @@ class Generator:
                 self.filemap.set_targets(path, targets)
         self.filemap.commit()
 
+        for processor in self.app._processors:
+            processor.process_changes_complete()
+
     def collect_changes(self, root=None):
         if root is None:
             root = self.app.content_root

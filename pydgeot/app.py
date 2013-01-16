@@ -42,7 +42,7 @@ class App:
 
             # Add processor builtins to syspath
             pkg = pkgutil.get_loader('pydgeot.processors.builtins')
-            sys.path.insert(0, pkg._path._path[0])
+            sys.path.insert(0, os.path.dirname(pkg.path))
 
             # Load plugins
             if 'plugins' in self.settings:
@@ -61,6 +61,19 @@ class App:
 
             # Sort processors by priority
             self._processors = sorted(self._processors, key=lambda p: p.priority, reverse=True)
+
+    @classmethod
+    def create(cls, path):
+        root = os.path.abspath(os.path.expanduser(path))
+        os.makedirs(os.path.join(root, 'content'))
+        os.makedirs(os.path.join(root, 'store'))
+        os.makedirs(os.path.join(root, 'store', 'log'))
+        os.makedirs(os.path.join(root, 'build'))
+        os.makedirs(os.path.join(root, 'plugins'))
+        conf = open(os.path.join(root, 'pydgeot.json'), 'w')
+        conf.write('{}')
+        conf.close()
+        return App(root)
 
     def get_processor(self, path):
         for processor in self._processors:

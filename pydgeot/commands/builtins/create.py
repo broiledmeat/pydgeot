@@ -11,14 +11,7 @@ def create(app, path):
     if os.path.exists(root):
         raise CommandError('Target directory \'{0}\' already exists'.format(root))
 
-    app = App(root)
-    os.makedirs(app.content_root)
-    os.makedirs(app.store_root)
-    os.makedirs(app.log_root)
-    os.makedirs(app.plugins_root)
-    os.makedirs(app.build_root)
+    App.create(root)
 
-    conf_file = open(app.config_path, 'w')
-    conf_file.write('{}')
-    conf_file.close()
+
 

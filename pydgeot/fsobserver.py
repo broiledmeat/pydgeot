@@ -1,14 +1,35 @@
 import sys
 import os
+import time
 
 class _FSObserverBase:
     observer = None
+    changed_timeout = 10
     def __init__(self, path):
         self.path = path
+        self.changed = {}
     def start(self):
         pass
+    def queue_changed(self, path):
+        if os.path.isfile(path):
+            self.changed[path] = time.time()
+    def signal_changed(self):
+        stime = time.time()
+        for path, mtime in list(self.changed.items()):
+            if self.is_locked(path):
+                continue
+            if mtime + self.changed_timeout < stime:
+                self.on_changed(path)
+                del self.changed[path]
     def on_changed(self, path):
         pass
+    def is_locked(self, path):
+        try:
+            f = open(path, 'r')
+            f.close()
+            return False
+        except:
+            return True
 
 if sys.platform == 'linux':
     try:
@@ -25,9 +46,13 @@ if sys.platform == 'linux':
                 wm = pyinotify.WatchManager()
                 notifier = pyinotify.Notifier(wm, self)
                 wm.add_watch(self.path, mask, rec=True)
-                notifier.loop()
+                while True:
+                    notifier.process_events()
+                    if notifier.check_events():
+                        notifier.read_events()
+                        self.signal_changed()
             def process_default(self, e):
-                self.on_changed(e.pathname)
+                self.queue_changed(e.pathname)
     except ImportError:
         pass
 
@@ -60,7 +85,7 @@ elif sys.platform == 'win32':
                 overlapped = pywintypes.OVERLAPPED()
                 overlapped.hEvent = win32event.CreateEvent(None, 0, 0, None)
                 while True:
-                    r = win32file.ReadDirectoryChangesW(
+                    win32file.ReadDirectoryChangesW(
                         handle,
                         buf,
                         True,
@@ -73,7 +98,8 @@ elif sys.platform == 'win32':
                             paths = win32file.FILE_NOTIFY_INFORMATION(buf, nbytes)
                             for action, path in paths:
                                 path = os.path.abspath(os.path.join(self.path, path))
-                                self.on_changed(path)
+                                self.queue_changed(path)
+                    self.signal_changed()
     except ImportError:
         pass
 
@@ -82,6 +108,7 @@ if 'FSObserver' not in globals():
 
     class FSObserver(_FSObserverBase):
         observer = 'fallback'
+        changed_timeout = 25
         def start(self):
             before = self.get_files_list()
             while True:
@@ -92,10 +119,10 @@ if 'FSObserver' not in globals():
                 updated = [f for f in after if f in before and after[f] != before[f]]
                 for path in added + removed + updated:
                     path = os.path.abspath(os.path.join(self.path, path))
-                    self.on_changed(path)
+                    self.queue_changed(path)
                 before = after
+                self.signal_changed()
         def get_files_list(self):
-            walk = list(os.walk(self.path))
-            dirs = [path for path, dirs, files in walk]
+            walk = os.walk(self.path)
             files = [os.path.join(path, filename) for path, dirs, files in walk for filename in files]
-            return dict([(path, os.stat(path).st_mtime) for path in dirs + files])
+            return dict([(path, os.stat(path).st_size) for path in files])

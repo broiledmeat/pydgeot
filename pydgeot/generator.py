@@ -74,7 +74,7 @@ class Generator:
                     continue
                 self.filemap.set_dependencies(path, dependencies)
                 self.filemap.set_targets(path, targets)
-        self.filemap.commit()
+                self.filemap.commit()
 
         for processor in self.app._processors:
             processor.process_changes_complete()

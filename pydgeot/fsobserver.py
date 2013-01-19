@@ -129,4 +129,4 @@ if 'FSObserver' not in globals():
         def get_files_list(self):
             walk = os.walk(self.path)
             files = [os.path.join(path, filename) for path, dirs, files in walk for filename in files]
-            return dict([(path, os.stat(path).st_size) for path in files])
+            return dict([(path, os.stat(path).st_mtime) for path in files])

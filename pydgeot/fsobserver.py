@@ -11,7 +11,7 @@ class _FSObserverBase:
     def start(self):
         pass
     def queue_changed(self, path):
-        if os.path.isfile(path):
+        if not os.path.isdir(path):
             self.changed[path] = time.time()
     def signal_changed(self):
         stime = time.time()
@@ -24,12 +24,7 @@ class _FSObserverBase:
     def on_changed(self, path):
         pass
     def is_locked(self, path):
-        try:
-            f = open(path, 'r')
-            f.close()
-            return False
-        except:
-            return True
+        return False
 
 if sys.platform == 'linux':
     try:
@@ -48,9 +43,9 @@ if sys.platform == 'linux':
                 wm.add_watch(self.path, mask, rec=True)
                 while True:
                     notifier.process_events()
-                    if notifier.check_events():
+                    if notifier.check_events(2000):
                         notifier.read_events()
-                        self.signal_changed()
+                    self.signal_changed()
             def process_default(self, e):
                 self.queue_changed(e.pathname)
     except ImportError:
@@ -100,6 +95,15 @@ elif sys.platform == 'win32':
                                 path = os.path.abspath(os.path.join(self.path, path))
                                 self.queue_changed(path)
                     self.signal_changed()
+            def is_locked(self, path):
+                if not os.path.exists(path):
+                    return False
+                try:
+                    f = open(path, 'r')
+                    f.close()
+                    return False
+                except IOError:
+                    return True
     except ImportError:
         pass
 

@@ -1,3 +1,4 @@
+import os
 import inspect
 
 available = {}
@@ -13,7 +14,12 @@ class Processor:
     def process_update(self, path):
         return []
     def process_delete(self, path):
-        pass
+        for target in self.app.filemap.get_targets(path):
+            if os.path.isfile(target):
+                try:
+                    os.remove(target)
+                except PermissionError:
+                    pass
     def get_dependencies(self, path):
         return []
     def process_changes_complete(self):

@@ -1,6 +1,4 @@
 import os
-import shutil
-from pydgeot.filemap import FileMap
 
 class ChangeSet:
     def __init__(self):
@@ -15,7 +13,6 @@ class ChangeSet:
 class Generator:
     def __init__(self, app):
         self.app = app
-        self.filemap = FileMap(app, os.path.join(app.store_root, 'filemap.db'))
 
     def wipe(self):
         for processor in self.app._processors:
@@ -26,7 +23,7 @@ class Generator:
                     os.remove(os.path.join(root, name))
                 for name in dirs:
                     os.rmdir(os.path.join(root, name))
-        self.filemap.wipe()
+        self.app.filemap.wipe()
 
     def generate(self):
         if not os.path.isdir(self.app.build_root):
@@ -43,18 +40,18 @@ class Generator:
             processor = self.app.get_processor(path)
             if processor is not None:
                 processor.process_delete(path)
-            for target in self.filemap.get_targets(path):
-                sources = self.filemap.get_targets(target, reverse=True)
-                if len(sources) <= 1 and os.path.isfile(target):
-                    os.remove(target)
+            for target in self.app.filemap.get_targets(path):
+                try:
                     dir = os.path.dirname(target)
                     if not os.listdir(dir):
                         os.rmdir(dir)
-            self.filemap.remove_source(path)
+                except PermissionError:
+                    pass
+            self.app.filemap.remove_source(path)
 
         dependencies = set()
         for path in changes.update:
-            dependencies |= set(self.filemap.get_dependencies(path, reverse=True))
+            dependencies |= set(self.app.filemap.get_dependencies(path, reverse=True))
         changes.update |= dependencies
 
         for path in changes.create | changes.update:
@@ -72,9 +69,9 @@ class Generator:
                 except Exception as e:
                     print('Exception occurred while processing:', e)
                     continue
-                self.filemap.set_dependencies(path, dependencies)
-                self.filemap.set_targets(path, targets)
-                self.filemap.commit()
+                self.app.filemap.set_dependencies(path, dependencies)
+                self.app.filemap.set_targets(path, targets)
+                self.app.filemap.commit()
 
         for processor in self.app._processors:
             processor.process_changes_complete()
@@ -86,7 +83,7 @@ class Generator:
 
         dirs = set()
 
-        old_sources = self.filemap.get_sources(root, mtimes=True)
+        old_sources = self.app.filemap.get_sources(root, mtimes=True)
         current_sources = []
         for filename in os.listdir(root):
             path = os.path.join(root, filename)

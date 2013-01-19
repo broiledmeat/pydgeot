@@ -4,6 +4,7 @@ import json
 import importlib
 import pkgutil
 from pydgeot import processors, commands
+from pydgeot.filemap import FileMap
 
 class InvalidAppRoot(Exception):
     pass
@@ -37,6 +38,9 @@ class App:
         self._commands.update(commands.available['builtins'])
 
         if self.is_valid:
+            # Load filemap
+            self.filemap = FileMap(self, os.path.join(self.store_root, 'filemap.db'))
+
             # Get settings
             self.settings = json.load(open(self.config_path))
 

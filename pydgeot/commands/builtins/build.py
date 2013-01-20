@@ -1,4 +1,4 @@
-def generate(app, *args):
+def build(app, *args):
     from pydgeot.commands import CommandError
     from pydgeot.generator import Generator
 

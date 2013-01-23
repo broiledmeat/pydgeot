@@ -14,16 +14,31 @@ class Generator:
     def __init__(self, app):
         self.app = app
 
-    def wipe(self):
+    def reset(self):
         for processor in self.app._processors:
-            processor.wipe()
+            processor.reset()
         if os.path.isdir(self.app.build_root):
             for root, dirs, files in os.walk(self.app.build_root, topdown=False, followlinks=False):
                 for name in files:
                     os.remove(os.path.join(root, name))
                 for name in dirs:
                     os.rmdir(os.path.join(root, name))
-        self.app.filemap.wipe()
+        self.app.filemap.reset()
+
+    def clean(self, paths=None):
+        if paths is None:
+            paths = [self.app.content_root]
+        for path in paths:
+            if os.path.isdir(path):
+                for root, dirs, files in os.walk(path, topdown=False, followlinks=False):
+                    sources = [os.path.join(root, file) for file in files]
+                    for source in sources:
+                        processor = self.app.get_processor(source)
+                        if processor is not None:
+                            processor.process_delete(source)
+        for processor in self.app._processors:
+            processor.process_changes_complete()
+        self.app.filemap.clean(paths)
 
     def generate(self):
         if not os.path.isdir(self.app.build_root):
@@ -40,13 +55,6 @@ class Generator:
             processor = self.app.get_processor(path)
             if processor is not None:
                 processor.process_delete(path)
-            for target in self.app.filemap.get_targets(path):
-                try:
-                    dir = os.path.dirname(target)
-                    if not os.listdir(dir):
-                        os.rmdir(dir)
-                except PermissionError:
-                    pass
             self.app.filemap.remove_source(path)
 
         dependencies = set()

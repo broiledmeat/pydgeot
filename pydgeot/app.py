@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 import json
 import importlib
 import pkgutil
@@ -38,11 +39,17 @@ class App:
         self._commands.update(commands.available['builtins'])
 
         if self.is_valid:
+            # Config logging
+#            logging.basicConfig(filename=os.path.join(self.log_root, 'app.log'), level=logging.INFO)
+
             # Load filemap
             self.filemap = FileMap(self, os.path.join(self.store_root, 'filemap.db'))
 
             # Get settings
-            self.settings = json.load(open(self.config_path))
+            try:
+                self.settings = json.load(open(self.config_path))
+            except ValueError as e:
+                raise AppError('Could not load config: \'{0}\''.format(e))
 
             # Add processor builtins to syspath
             pkg = pkgutil.get_loader('pydgeot.processors.builtins')

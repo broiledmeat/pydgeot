@@ -18,13 +18,16 @@ class Processor:
             if os.path.isfile(target):
                 try:
                     os.remove(target)
+                    dir = os.path.dirname(target)
+                    if not os.listdir(dir):
+                        os.rmdir(dir)
                 except PermissionError:
                     pass
     def get_dependencies(self, path):
         return []
     def process_changes_complete(self):
         pass
-    def wipe(self):
+    def reset(self):
         pass
 
 class register:

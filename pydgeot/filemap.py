@@ -47,7 +47,7 @@ class FileMap:
     def commit(self):
         self.connection.commit()
 
-    def wipe(self):
+    def reset(self):
         self.cursor.execute("DELETE FROM source_dependencies")
         self.cursor.execute("DELETE FROM source_targets")
         self.cursor.execute("DELETE FROM sources")
@@ -56,16 +56,30 @@ class FileMap:
         self.cursor.execute("delete from sqlite_sequence where name='sources'")
         self.commit()
 
+    def clean(self, paths):
+        for path in paths:
+            regex = self._regex(path)
+            self.cursor.execute("SELECT id FROM sources WHERE path REGEXP ?", (regex, ))
+            ids = [result[0] for result in self.cursor.fetchall()]
+            print(regex)
+            print(ids)
+            if len(ids) > 0:
+                id_query = '(' + ','.join('?' * len(ids)) + ')'
+                self.cursor.execute("""
+                    DELETE FROM source_dependencies
+                    WHERE
+                        source_id IN {0} OR
+                        dependency_id IN {0}
+                    """.format(id_query), (ids + ids))
+                self.cursor.execute("DELETE FROM source_targets WHERE source_id IN {0}".format(id_query), ids)
+                self.cursor.execute("DELETE FROM sources WHERE id IN {0}".format(id_query), ids)
+        self.commit()
+
     def get_sources(self, prefix=None, mtimes=False):
         if prefix is None:
             results = self.cursor.execute('SELECT path, modified FROM sources')
         else:
-            rel = self._relative_path(prefix)
-            if rel == '':
-                regex = '^([^{0}]*)$'.format(os.sep)
-            else:
-                regex = '^{0}{1}([^{1}]*)$'.format(rel, os.sep)
-            regex = regex.replace('\\', '\\\\')
+            regex = self._regex(prefix)
             results = self.cursor.execute('SELECT path, modified FROM sources WHERE path REGEXP ?', (regex, ))
         if mtimes:
             return [(self._source_path(result[0]), result[1]) for result in results]
@@ -196,3 +210,11 @@ class FileMap:
             path = os.path.relpath(path, self.app.build_root)
         path = '' if path == '.' else path
         return path
+
+    def _regex(self, path):
+        rel = self._relative_path(path)
+        if rel == '':
+            regex = '^([^{0}]*)$'.format(os.sep)
+        else:
+            regex = '^{0}{1}([^{1}]*)$'.format(rel, os.sep)
+        return regex.replace('\\', '\\\\')

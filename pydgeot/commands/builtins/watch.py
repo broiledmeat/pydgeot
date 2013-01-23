@@ -7,8 +7,6 @@ def watch(app, *args):
 
     if app.is_valid:
         gen = Generator(app)
-        if len(args) > 0 and args[0] == 'wipe':
-            gen.wipe()
         gen.generate()
 
         obs = FSObserver(app.content_root)

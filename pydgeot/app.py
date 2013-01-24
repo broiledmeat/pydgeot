@@ -29,7 +29,7 @@ class App:
         self.is_valid = os.path.isdir(self.root) and os.path.isfile(self.config_path)
 
         if not self.is_valid and raise_invalid:
-            raise InvalidAppRoot('App root \'{0}\' does not exist or not a valid app directory.'.format(self.root))
+            raise InvalidAppRoot('App root \'{0}\' does not exist or is not a valid app directory.'.format(self.root))
 
         self._commands = {}
         self._processors = []
@@ -40,7 +40,17 @@ class App:
 
         if self.is_valid:
             # Config logging
-#            logging.basicConfig(filename=os.path.join(self.log_root, 'app.log'), level=logging.INFO)
+            os.makedirs(self.log_root, exist_ok=True)
+            self.log = logging.getLogger('app')
+            self.log.setLevel(logging.DEBUG)
+            formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+            file_handler = logging.FileHandler(os.path.join(self.log_root, 'app.log'))
+            file_handler.setFormatter(formatter)
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(formatter)
+            console_handler.setLevel(logging.INFO)
+            self.log.addHandler(file_handler)
+            self.log.addHandler(console_handler)
 
             # Load filemap
             self.filemap = FileMap(self, os.path.join(self.store_root, 'filemap.db'))
@@ -86,11 +96,58 @@ class App:
         conf.close()
         return App(root)
 
+    def reset(self):
+        for processor in self._processors:
+            processor.reset()
+        if os.path.isdir(self.build_root):
+            for root, dirs, files in os.walk(self.build_root, topdown=False, followlinks=False):
+                for name in files:
+                    os.remove(os.path.join(root, name))
+                for name in dirs:
+                    os.rmdir(os.path.join(root, name))
+        self.filemap.reset()
+
+    def clean(self, paths=None):
+        if paths is None:
+            paths = [self.content_root]
+        for path in paths:
+            if os.path.isdir(path):
+                for root, dirs, files in os.walk(path, topdown=False, followlinks=False):
+                    sources = [os.path.join(root, file) for file in files]
+                    for source in sources:
+                        self.process_delete(source)
+        for processor in self._processors:
+            processor.process_changes_complete()
+        self.filemap.clean(paths)
+
     def get_processor(self, path):
         for processor in self._processors:
             if processor.can_process(path):
                 return processor
         return None
+
+    def _process_func(self, path, name):
+        processor = self.get_processor(path)
+        if processor is not None and hasattr(processor, 'process_' + name):
+            rel = os.path.relpath(path, self.content_root)
+            proc_name = processor.__class__.__name__
+            try:
+                value = getattr(processor, 'process_' + name)(path)
+                self.log.info('Processed \'%s\' %s with %s', rel, name, proc_name)
+                return value
+            except Exception as e:
+                self.log.exception('Exception occurred processing \'%s\' %s with %s',
+                                   rel, name, proc_name)
+        return None
+
+    def process_create(self, path):
+        return self._process_func(path, 'create')
+
+    def process_update(self, path):
+        return self._process_func(path, 'update')
+
+    def process_delete(self, path):
+        return self._process_func(path, 'delete')
 
     def run_command(self, name, *args):
         if name in self._commands:
@@ -100,7 +157,8 @@ class App:
             has_varg = command.func.__code__.co_flags & 0x04 > 0
 
             if (has_varg and args_len >= arg_count) or (not has_varg and args_len == arg_count):
+                self.log.debug('Running command \'%s %s\'', name, ' '.join(args))
                 return command.func(self, *args)
             else:
-                raise commands.CommandError('Incorrect number of arguments passed to commands \'{0}\''.format(name))
+                raise commands.CommandError('Incorrect number of arguments passed to command \'{0}\''.format(name))
         raise commands.CommandError('Command \'{0}\' does not exist'.format(name))

@@ -14,32 +14,6 @@ class Generator:
     def __init__(self, app):
         self.app = app
 
-    def reset(self):
-        for processor in self.app._processors:
-            processor.reset()
-        if os.path.isdir(self.app.build_root):
-            for root, dirs, files in os.walk(self.app.build_root, topdown=False, followlinks=False):
-                for name in files:
-                    os.remove(os.path.join(root, name))
-                for name in dirs:
-                    os.rmdir(os.path.join(root, name))
-        self.app.filemap.reset()
-
-    def clean(self, paths=None):
-        if paths is None:
-            paths = [self.app.content_root]
-        for path in paths:
-            if os.path.isdir(path):
-                for root, dirs, files in os.walk(path, topdown=False, followlinks=False):
-                    sources = [os.path.join(root, file) for file in files]
-                    for source in sources:
-                        processor = self.app.get_processor(source)
-                        if processor is not None:
-                            processor.process_delete(source)
-        for processor in self.app._processors:
-            processor.process_changes_complete()
-        self.app.filemap.clean(paths)
-
     def generate(self):
         if not os.path.isdir(self.app.build_root):
             os.makedirs(self.app.build_root)
@@ -47,15 +21,10 @@ class Generator:
         self.process_changes(changes)
 
     def process_changes(self,  changes):
-        print('CREATE', changes.create)
-        print('UPDATE', changes.update)
-        print('DELETE', changes.delete)
-
         for path in changes.delete:
-            processor = self.app.get_processor(path)
-            if processor is not None:
-                processor.process_delete(path)
+            self.app.process_delete(path)
             self.app.filemap.remove_source(path)
+            self.app.filemap.commit()
 
         dependencies = set()
         for path in changes.update:
@@ -63,20 +32,9 @@ class Generator:
         changes.update |= dependencies
 
         for path in changes.create | changes.update:
-            processor = self.app.get_processor(path)
-            if processor is not None:
-                print('Processing {0} with {1}'.format(os.path.relpath(path, self.app.content_root), processor.__class__.__name__))
-                try:
-                    dependencies = processor.get_dependencies(path)
-                except Exception as e:
-                    print('Exception occurred getting dependencies:', e)
-                    continue
-                try:
-                    proc_func = processor.process_create if path in changes.create else processor.process_update
-                    targets = proc_func(path)
-                except Exception as e:
-                    print('Exception occurred while processing:', e)
-                    continue
+            proc_func = self.app.process_create if path in changes.create else self.app.process_update
+            targets = proc_func(path)
+            if targets is not None:
                 self.app.filemap.set_dependencies(path, dependencies)
                 self.app.filemap.set_targets(path, targets)
                 self.app.filemap.commit()

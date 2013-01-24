@@ -18,12 +18,24 @@ if __name__ == '__main__':
     from docopt import docopt
 
     sys.path = sys.path[1:]
-    from pydgeot.app import App
+    from pydgeot.app import App, AppError, InvalidAppRoot
+    from pydgeot.commands import CommandError
 
     args = docopt(__doc__, version='Pydgeot 0.2')
-    app = App(args['--app'])
+
+    try:
+        app = App(args['--app'])
+    except (AppError, InvalidAppRoot) as e:
+        print(e)
+        exit(1)
 
     if args['commands']:
         args['<command>'] = 'commands'
 
-    app.run_command(args['<command>'], *args['<args>'])
+    try:
+        app.run_command(args['<command>'], *args['<args>'])
+    except CommandError as e:
+        print(e)
+        exit(2)
+    except KeyboardInterrupt:
+        pass

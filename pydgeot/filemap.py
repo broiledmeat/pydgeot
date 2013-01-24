@@ -61,8 +61,6 @@ class FileMap:
             regex = self._regex(path)
             self.cursor.execute("SELECT id FROM sources WHERE path REGEXP ?", (regex, ))
             ids = [result[0] for result in self.cursor.fetchall()]
-            print(regex)
-            print(ids)
             if len(ids) > 0:
                 id_query = '(' + ','.join('?' * len(ids)) + ')'
                 self.cursor.execute("""

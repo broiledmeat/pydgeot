@@ -58,7 +58,7 @@ class FileMap:
 
     def clean(self, paths):
         for path in paths:
-            regex = self._regex(path)
+            regex = self._regex(path, subdirs=True)
             self.cursor.execute("SELECT id FROM sources WHERE path REGEXP ?", (regex, ))
             ids = [result[0] for result in self.cursor.fetchall()]
             if len(ids) > 0:
@@ -209,10 +209,14 @@ class FileMap:
         path = '' if path == '.' else path
         return path
 
-    def _regex(self, path):
+    def _regex(self, path, subdirs=False):
         rel = self._relative_path(path)
-        if rel == '':
-            regex = '^([^{0}]*)$'.format(os.sep)
+        if subdirs:
+            match = '.*'
         else:
-            regex = '^{0}{1}([^{1}]*)$'.format(rel, os.sep)
+            match = '[^{0}]*'.format(os.sep)
+        if rel == '':
+            regex = '^({0})$'.format(match)
+        else:
+            regex = '^{0}{1}({2})$'.format(rel, os.sep, match)
         return regex.replace('\\', '\\\\')

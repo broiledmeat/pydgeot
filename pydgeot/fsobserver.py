@@ -3,17 +3,34 @@ import os
 import time
 
 class _FSObserverBase:
+    """
+    Base class for file system observers. Queues file changes and signals change events.
+    """
     observer = None
     changed_timeout = 10
     def __init__(self, path):
         self.path = path
         self.changed = {}
     def start(self):
+        """
+        Start file system observation loop.
+        """
         pass
     def queue_changed(self, path):
+        """
+        Place a file change event in to the change queue. Should be called from the observation loop when file changes
+        are detected.
+
+        Args:
+            path: File path to place in to the change queue.
+        """
         if not os.path.isdir(path):
             self.changed[path] = time.time()
     def signal_changed(self):
+        """
+        Iterate through the change queue, signaling changes for those that are not locked, and have passed the changed
+        timeout.
+        """
         stime = time.time()
         for path, mtime in list(self.changed.items()):
             if self.is_locked(path):
@@ -22,8 +39,24 @@ class _FSObserverBase:
                 self.on_changed(path)
                 del self.changed[path]
     def on_changed(self, path):
+        """
+        Called when a file change has been through the queue and timed out (when the file can be sure to have finished
+        changing.) This should be overridden in the observer instance.
+
+        Args:
+            path: File path to signal as having been changed.
+        """
         pass
     def is_locked(self, path):
+        """
+        Check if a file is locked (still being written to.)
+
+        Args:
+            path: File path to check if is locked.
+
+        Returns:
+            Whether the file path is locked.
+        """
         return False
 
 if sys.platform == 'linux':
@@ -31,6 +64,9 @@ if sys.platform == 'linux':
         import pyinotify
 
         class FSObserver(_FSObserverBase, pyinotify.ProcessEvent):
+            """
+            File system observer using Pyinotify.
+            """
             observer = 'inotify'
             def start(self):
                 mask = pyinotify.IN_CREATE | \
@@ -47,6 +83,12 @@ if sys.platform == 'linux':
                         notifier.read_events()
                     self.signal_changed()
             def process_default(self, e):
+                """
+                Pyinotify catch-all change event.
+
+                Args:
+                    e: Pyinotify change event.
+                """
                 self.queue_changed(e.pathname)
     except ImportError:
         pass
@@ -59,6 +101,9 @@ elif sys.platform == 'win32':
         import pywintypes
 
         class FSObserver(_FSObserverBase):
+            """
+            File system observer for Windows.
+            """
             observer = 'win32'
             def start(self):
                 handle = win32file.CreateFile(
@@ -99,6 +144,9 @@ elif sys.platform == 'win32':
                 if not os.path.exists(path):
                     return False
                 try:
+                    # When copying files, Windows will only report one change event. On large files this can cause the
+                    # change queue to timeout and signal a change prematurely. Luckily, the file won't be open for read
+                    # until the copy operation is done, so check for readability.
                     f = open(path, 'r')
                     f.close()
                     return False
@@ -111,6 +159,9 @@ if 'FSObserver' not in globals():
     import time
 
     class FSObserver(_FSObserverBase):
+        """
+        Platform independent fallback file system observer.
+        """
         observer = 'fallback'
         changed_timeout = 25
         def start(self):
@@ -127,6 +178,12 @@ if 'FSObserver' not in globals():
                 before = after
                 self.signal_changed()
         def get_files_list(self):
+            """
+            Get a flat list of file paths with modified times.
+
+            Returns:
+                A list of tuples containing a file path and its modified time.
+            """
             walk = os.walk(self.path)
             files = [os.path.join(path, filename) for path, dirs, files in walk for filename in files]
             return dict([(path, os.stat(path).st_mtime) for path in files])

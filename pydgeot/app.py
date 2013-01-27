@@ -15,6 +15,12 @@ class AppError(Exception):
 
 class App:
     def __init__(self, root=None):
+        """
+        Initialize a new App instance for the given app directory.
+
+        Args:
+            root: The app directory path root to initialize at.
+        """
         # If root is None, then try to use the current directory. If it doesn't work then just set is_valid to false.
         # If it is set, and the directory is invalid, then raise InvalidAppRoot
         raise_invalid = root is not None
@@ -85,6 +91,15 @@ class App:
 
     @classmethod
     def create(cls, path):
+        """
+        Create a new app directory structure.
+
+        Args:
+            path: Directory path to create new app directory at.
+
+        Returns:
+            An app instance for the new app directory.
+        """
         root = os.path.abspath(os.path.expanduser(path))
         os.makedirs(os.path.join(root, 'content'))
         os.makedirs(os.path.join(root, 'store'))
@@ -97,6 +112,9 @@ class App:
         return App(root)
 
     def reset(self):
+        """
+        Delete all built content.
+        """
         for processor in self._processors:
             processor.reset()
         if os.path.isdir(self.build_root):
@@ -108,6 +126,13 @@ class App:
         self.filemap.reset()
 
     def clean(self, paths=None):
+        """
+        Process delete events for all files under the given paths. Simulates the paths as having been deleted, without
+        actually deleting the source files, allowing the source files to be rebuilt completely.
+
+        Args:
+            paths: List of directory paths to clean.
+        """
         if paths is None:
             paths = [self.content_root]
         for path in paths:
@@ -121,12 +146,31 @@ class App:
         self.filemap.clean(paths)
 
     def get_processor(self, path):
+        """
+        Get a processor able to handle the given path.
+
+        Args:
+            path: File path to get a processor for.
+
+        Returns:
+            A file processor, or None if one can not be found.
+        """
         for processor in self._processors:
             if processor.can_process(path):
                 return processor
         return None
 
     def _process_func(self, path, name):
+        """
+        Find a processor to handle a path, and process it with the named event.
+
+        Args:
+            path: File path to process.
+            name: Name of the event to process with (create, update, or delete).
+
+        Returns:
+            The return value of the process method called, or None if no processor could be found.
+        """
         processor = self.get_processor(path)
         if processor is not None and hasattr(processor, 'process_' + name):
             rel = os.path.relpath(path, self.content_root)
@@ -141,15 +185,56 @@ class App:
         return None
 
     def process_create(self, path):
+        """
+        Process a create event for the given path.
+
+        Args:
+            path: File path to process.
+
+        Returns:
+            A list of files generated for the path, or None if no processor could be found.
+        """
         return self._process_func(path, 'create')
 
     def process_update(self, path):
+        """
+        Process an update event for the given path.
+
+        Args:
+            path: File path to process.
+
+        Returns:
+            A list of files generated for the path, or None if no processor could be found.
+        """
         return self._process_func(path, 'update')
 
     def process_delete(self, path):
+        """
+        Process a delete event for the given path.
+
+        Args:
+            path: File path to process.
+
+        Returns:
+            None
+        """
         return self._process_func(path, 'delete')
 
     def run_command(self, name, *args):
+        """
+        Run a command.
+
+        Args:
+            name: Name of the command to run.
+            args: Arguments to pass to the command.
+
+        Raises:
+            CommandError: If a command with the name does not exist, or if the command does not take the number of
+                          arguments given.
+
+        Returns:
+            The return value of the command being run.
+        """
         if name in self._commands:
             command = self._commands[name]
             args_len = len(args) + 1

@@ -9,6 +9,12 @@ class _FSObserverBase:
     observer = None
     changed_timeout = 10
     def __init__(self, path):
+        """
+        Initialize the observer.
+
+        Args:
+            path: Directory path to observe.
+        """
         self.path = path
         self.changed = {}
     def start(self):

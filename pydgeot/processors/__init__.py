@@ -10,8 +10,6 @@ class Processor:
     priority = 50 # Processors can_process methods are checked in order of priority. Higher priority is checked earlier.
     def __init__(self, app):
         """
-        Initialize Processor instance.
-
         Args:
             app: Parent App instance.
         """

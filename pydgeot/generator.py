@@ -25,8 +25,6 @@ class Generator:
     """
     def __init__(self, app):
         """
-        Initialize Generator instance.
-
         Args:
             app: Parent App instance.
         """

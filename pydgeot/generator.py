@@ -1,31 +1,59 @@
 import os
 
 class ChangeSet:
+    """
+    Contains a set of file changes.
+    """
     def __init__(self):
         self.create = set()
         self.update = set()
         self.delete = set()
     def merge(self, other):
+        """
+        Merge from another ChangeSet.
+
+        Args:
+            other: ChangeSet to merge changes from.
+        """
         self.create |= other.create
         self.update |= other.update
         self.delete |= other.delete
 
 class Generator:
+    """
+    Source content builder for App instances.
+    """
     def __init__(self, app):
+        """
+        Initialize Generator instance.
+
+        Args:
+            app: Parent App instance.
+        """
         self.app = app
 
     def generate(self):
+        """
+        Build content for the App's root content directory.
+        """
         if not os.path.isdir(self.app.build_root):
             os.makedirs(self.app.build_root)
         changes = self.collect_changes()
         self.process_changes(changes)
 
-    def process_changes(self,  changes):
+    def process_changes(self, changes):
+        """
+        Build content for a given ChangeSet.
+
+        Args:
+            changes: ChangeSet to build content for.
+        """
         for path in changes.delete:
             self.app.process_delete(path)
             self.app.filemap.remove_source(path)
             self.app.filemap.commit()
 
+        # Get any files that are dependent on updated files, and add them to the ChangeSet to be rebuilt.
         dependencies = set()
         for path in changes.update:
             dependencies |= set(self.app.filemap.get_dependencies(path, reverse=True))
@@ -43,6 +71,15 @@ class Generator:
             processor.process_changes_complete()
 
     def collect_changes(self, root=None):
+        """
+        Find new, updated, or deleted files in a directory.
+
+        Args:
+            root: Directory path to look for changes in.
+
+        Returns:
+            A ChangeSet instance, representing any changed files.
+        """
         if root is None:
             root = self.app.content_root
         changes = ChangeSet()

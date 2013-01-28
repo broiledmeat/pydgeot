@@ -16,5 +16,5 @@ setup(
     license='Apache License, Version 2.0',
     author='Derrick Staples',
     author_email='broiledmeat@gmail.com',
-    description='Static content generator',
+    description='Static content generator'
 )

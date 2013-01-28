@@ -3,13 +3,26 @@ import inspect
 available = {}
 
 class Command:
+    """
+    Container for command functions and help texts.
+    """
     def __init__(self, func, name, help_args, help):
+        """
+        Args:
+            func: Command function to be called.
+            name: Name of the command, if None, the name of the function is used.
+            help_args: Usage text describing arguments.
+            help: Usage text describing the commands purpose.
+        """
         self.func = func
         self.name = name if name is not None else func.__name__
         self.help_args = help_args
         self.help = help
 
 class register:
+    """
+    Decorator to add command functions to the list of available commands.
+    """
     def __init__(self, name=None, help_args='', help=''):
         self.name = name
         self.help_args = help_args

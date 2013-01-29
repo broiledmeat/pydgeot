@@ -9,7 +9,7 @@ def watch(app, *args):
         gen = Generator(app)
         gen.generate()
 
-        obs = FSObserver(app.content_root)
+        obs = FSObserver(app.source_root)
         def on_changed(self, path):
             root = os.path.dirname(path)
             changes = gen.collect_changes(root)

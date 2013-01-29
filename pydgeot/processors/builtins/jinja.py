@@ -13,10 +13,10 @@ class JinjaProcessor(Processor):
 
     def process_update(self, path):
         if not self._has_template_flag(path):
-            env = self._get_env(self.app.content_root)
+            env = self._get_env(self.app.source_root)
             content = open(path).read()
             template = env.from_string(content)
-            rel = os.path.relpath(path, self.app.content_root)
+            rel = os.path.relpath(path, self.app.source_root)
             target = os.path.join(self.app.build_root, rel)
             os.makedirs(os.path.dirname(target), exist_ok=True)
             f = open(target, 'w')
@@ -26,8 +26,8 @@ class JinjaProcessor(Processor):
         return []
 
     def get_dependencies(self, path):
-        body = self._get_env(self.app.content_root).parse(open(path).read()).body
-        return self._find_deps(self.app.content_root, body)
+        body = self._get_env(self.app.source_root).parse(open(path).read()).body
+        return self._find_deps(self.app.source_root, body)
 
     def _get_env(self, root):
         if root not in self.envs:
@@ -35,7 +35,7 @@ class JinjaProcessor(Processor):
         return self.envs[root]
 
     def _has_template_flag(self, path):
-        body = self._get_env(self.app.content_root).parse(open(path).read()).body
+        body = self._get_env(self.app.source_root).parse(open(path).read()).body
         for part in body:
             if isinstance(part, jinja2.nodes.Assign) and \
                part.target.name == 'template_only' and \

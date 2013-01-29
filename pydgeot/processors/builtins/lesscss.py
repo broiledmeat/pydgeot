@@ -14,7 +14,7 @@ class LessCSSProcessor(Processor):
 
     def process_update(self, path):
         self.parser.parse(filename=path)
-        rel = os.path.relpath(path, self.app.content_root)
+        rel = os.path.relpath(path, self.app.source_root)
         target = os.path.join(self.app.build_root, rel)
         os.makedirs(os.path.dirname(target), exist_ok=True)
         f = open(target, 'w')

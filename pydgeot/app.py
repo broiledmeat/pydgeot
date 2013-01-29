@@ -26,7 +26,7 @@ class App:
         raise_invalid = root is not None
         root = root if root is not None else './'
         self.root = os.path.realpath(os.path.abspath(os.path.expanduser(root)))
-        self.content_root = os.path.realpath(os.path.join(self.root, 'content'))
+        self.source_root = os.path.realpath(os.path.join(self.root, 'source'))
         self.store_root = os.path.realpath(os.path.join(self.root, 'store'))
         self.log_root = os.path.realpath(os.path.join(self.store_root, 'log'))
         self.build_root = os.path.realpath(os.path.join(self.root, 'build'))
@@ -45,6 +45,9 @@ class App:
         self._commands.update(commands.available['builtins'])
 
         if self.is_valid:
+            # Make source root if necessary
+            os.makedirs(self.source_root, exist_ok=True)
+
             # Config logging
             os.makedirs(self.log_root, exist_ok=True)
             self.log = logging.getLogger('app')
@@ -101,7 +104,7 @@ class App:
             An app instance for the new app directory.
         """
         root = os.path.abspath(os.path.expanduser(path))
-        os.makedirs(os.path.join(root, 'content'))
+        os.makedirs(os.path.join(root, 'source'))
         os.makedirs(os.path.join(root, 'store'))
         os.makedirs(os.path.join(root, 'store', 'log'))
         os.makedirs(os.path.join(root, 'build'))
@@ -134,7 +137,7 @@ class App:
             paths: List of directory paths to clean.
         """
         if paths is None:
-            paths = [self.content_root]
+            paths = [self.source_root]
         for path in paths:
             if os.path.isdir(path):
                 for root, dirs, files in os.walk(path, topdown=False, followlinks=False):
@@ -173,7 +176,7 @@ class App:
         """
         processor = self.get_processor(path)
         if processor is not None and hasattr(processor, 'process_' + name):
-            rel = os.path.relpath(path, self.content_root)
+            rel = os.path.relpath(path, self.source_root)
             proc_name = processor.__class__.__name__
             try:
                 value = getattr(processor, 'process_' + name)(path)

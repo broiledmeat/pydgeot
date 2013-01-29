@@ -301,7 +301,7 @@ class FileMap:
         Returns:
             A source path.
         """
-        return os.path.join(self.app.content_root, relative)
+        return os.path.join(self.app.source_root, relative)
 
     def _target_path(self, relative):
         """
@@ -325,8 +325,8 @@ class FileMap:
         Returns:
             A relative path.
         """
-        if path.startswith(self.app.content_root):
-            path = os.path.relpath(path, self.app.content_root)
+        if path.startswith(self.app.source_root):
+            path = os.path.relpath(path, self.app.source_root)
         elif path.startswith(self.app.build_root):
             path = os.path.relpath(path, self.app.build_root)
         path = '' if path == '.' else path

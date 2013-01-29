@@ -79,7 +79,7 @@ class Generator:
             A ChangeSet instance, representing any changed files.
         """
         if root is None:
-            root = self.app.content_root
+            root = self.app.source_root
         changes = ChangeSet()
 
         dirs = set()

@@ -245,7 +245,7 @@ class App:
             has_varg = command.func.__code__.co_flags & 0x04 > 0
 
             if (has_varg and args_len >= arg_count) or (not has_varg and args_len == arg_count):
-                self.log.debug('Running command \'%s %s\'', name, ' '.join(args))
+                self.log.debug('Running command \'%s\'', ' '.join([name] + list(args)))
                 return command.func(self, *args)
             else:
                 raise commands.CommandError('Incorrect number of arguments passed to command \'{0}\''.format(name))

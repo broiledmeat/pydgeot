@@ -1,52 +1,97 @@
 # Pydgeot
-Pydgeot is a low-frills static website generator. It updates files as needed,
-and passes some things through file handlers, and not much else.
-
-Pydgeot is still under active development, and any
-suggestions/criticisms/yelling is more than welcome.
-
-***
+Pydgeot is a low-frills static website generator with fairly limited plugin support. It is still under active
+development; any suggestions/criticisms/yellings are more than welcome.
 
 ### Features
 - Tracks file changes, so only files that need to be updated are touched.
-- [Jinja2](http://jinja.pocoo.org/docs/) template and
-  [LESS](http://lesscss.org/) CSS support.
-- A mostly superfluous simple development server.
+- File system watcher to build content on-the-fly.
+- File processor and command plugins.
+- Built-in [Jinja2 template](http://jinja.pocoo.org/docs/) and [LESS CSS](http://lesscss.org/) processors.
 
 ### Limitations
-- Content is not updated on the fly.
-- Site structure is not tracked, and no context variables are available to
-  templates. Note that template dependency *is* tracked, and parent/child
-  templates will update appropriately.
-
-### Planned
-- Load user-definable file handler modules.
-- Config files for source directories.
-
-***
+- Built-in processors do not track site structure, and no context variables are available.
 
 ### Requirements
 - Python 3.*
-- Jinja2 *(Optional)*
-- Lesscpy *(Optional)*
+- [DocOpt](https://github.com/docopt/docopt)
+
+Additionally, the built-in Jinja2 and Lesscpy processors require [Jinja2](https://github.com/mitsuhiko/jinja2) and
+[Lesscpy](https://github.com/robotis/Lesscpy), respectively.
 
 ### Installation
-    git clone https://github.com/broiledmeat/pydgeot.py pydgeot
-    cd pydgeot
-    python setup.py install
+```bash
+git clone https://github.com/broiledmeat/pydgeot.py pydgeot
+cd pydgeot
+python setup.py install
+```
 
 ### Usage
-The simplest use is to just generate contents from a source directory over to a
-target directory.
+Pydgeot not only needs content to generate, but a place to store working files and configuration for the associated
+content. All this data is stored in what Pydgeot calls an 'app' directory. An app directory contains the source content,
+the built content, configuration, working data, and any plugins specific to the app. A new
+[app directory](#_app_directories) can be created with the 'create' command.
 
-    pydgeot-gen ~/source ~/target
+```bash
+pydgeot create [PATH]
+```
 
-On first use, this will copy (or pass things through file handlers) everything
-over to the target directory. On subsequent uses, only files that need to be
-updated will be changed.
+This generates an empty configuration, and without at least specifying some plugins, nothing will be generated. Read the
+[configuration section](#_configuration) to get started.
 
-By default, generation will check a '/.templates' directory for changes, but
-will not copy over contents to a target directory. To change the list of ignored
-file paths, a comma seperated list of regexes can be passed to pydgeot-gen.
+Once configuration is done, and content has been placed in the source content directory, Pydgeot can build content with
+the 'build' command.
+```bash
+pydgeot build -a [APP_PATH]
+```
+`APP_PATH` should be the location of your app directory generated with the 'create' command. By default `APP_PATH` is
+the current working directory.
 
-    pydgeot-gen --ignore-matches ^\.templates(/.*)?$,^hiddenstuff\.*$ ~/source ~/target
+To have Pydgeot watch the source content directory, and build files as they are added or changed, use the 'watch'
+command.
+```bash
+pydgeot watch -a [APP_PATH]
+```
+
+Running Pydgeot always requires a command as the first argument. To see a list of available commands, use 'commands'.
+```bash
+pydgeot commands
+```
+
+### App Directories<a id="_app_directories"></a>
+A Pydgeot app directory contains the following directories and files.
+
+- `source/` Source content
+- `build/` Content built from the `source/` directory
+- `store/` Working data store for Pydgeot and plugins
+- `store/log/` Log files
+- `plugins/` Plugins to be available
+- `pydgeot.json` Configuration file
+
+### Configuration<a id="_configuration"></a>
+Pydgeot keeps a single JSON configuration file for itself and plugins. Before Pydgeot will do anything of use, the
+configuration file must have at least the `plugins` field set (which is also the only field Pydgeot currently reads.)
+
+- `plugins`
+  A list of plugins load. The names must be the name of a python file, without an extension. A simple configuration
+  file specifying only loading Pydgeots built-in plugins would look like:
+
+  ```json
+  {
+    'plugins': ['jinja', 'lesscss', 'copyfallback']
+  }
+  ```
+
+### Plugins
+Pydgeot plugins are optional modules that may add commands and/or file processors. Pydgeot does come with a few built-in
+plugins, but more can be loaded by including them in the apps plugin directory, and added them to the configurations
+`plugins` list.
+
+#### Built-In Plugins
+- [Jinja2](https://github.com/mitsuhiko/jinja2)
+  Simple Jinja2 template file processor. Does not add any context variables or keep track of site structure.
+  `{% set template_only = True %}` can be added to a template file to cause it to not be built (but will still update
+  any other template files that are based on it to render when updated.)
+- [Lesscpy](https://github.com/robotis/Lesscpy)
+  LessCPY file processor.
+- CopyFallback
+  Simply copies any files not handled by other file processors.

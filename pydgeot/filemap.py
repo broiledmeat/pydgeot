@@ -135,10 +135,10 @@ class FileMap:
         self.cursor.execute("SELECT id FROM sources WHERE path = ?", (rel, ))
         result = self.cursor.fetchone()
         if result is not None:
-            id = result[0]
-            self.cursor.execute("DELETE FROM source_targets WHERE source_id = ?", (id, ))
-            self.cursor.execute("DELETE FROM source_dependencies WHERE source_id = ? OR dependency_id = ?", (id, id))
-            self.cursor.execute("DELETE FROM sources WHERE id = ?", (id, ))
+            sid = result[0]
+            self.cursor.execute("DELETE FROM source_targets WHERE source_id = ?", (sid, ))
+            self.cursor.execute("DELETE FROM source_dependencies WHERE source_id = ? OR dependency_id = ?", (sid, sid))
+            self.cursor.execute("DELETE FROM sources WHERE id = ?", (sid, ))
 
     def get_targets(self, source, reverse=False):
         """
@@ -188,14 +188,14 @@ class FileMap:
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE s.path = ?)
             """, (rel, ))
-        id = self._add_source(source)
+        sid = self._add_source(source)
         self.cursor.executemany("""
             INSERT INTO source_targets
                 (source_id, path)
                 VALUES (?, ?)
-            """, ([(id, self._relative_path(value)) for value in values]))
+            """, ([(sid, self._relative_path(value)) for value in values]))
 
-    def get_dependencies(self, source, reverse=False):
+    def get_dependencies(self, source, reverse=False, recursive=False):
         """
         Get a list of source paths that a source path depends on to generate.
 
@@ -208,10 +208,13 @@ class FileMap:
             source: Source path to get dependency paths for.
             reverse: Perform a reverse lookup instead. Return source paths that depend on the given source path to
                      generate.
+            recursive: Include dependencies of dependencies. It's turtles all the way down.
 
         Returns:
             A list of source paths.
         """
+        if recursive:
+            return self._get_dependencies_recursive(source, reverse)
         rel = self._relative_path(source)
         if reverse:
             results = self.cursor.execute("""
@@ -230,6 +233,25 @@ class FileMap:
                 WHERE s.path = ?
                 """, (rel, ))
         return [self._source_path(result[0]) for result in results]
+
+    def _get_dependencies_recursive(self, path, reverse, _parent_deps=set()):
+        """
+        Get a list of all dependencies for a file, cascading in dependencies of dependencies.
+
+        Args:
+            source: Source path to get dependency paths for.
+            reverse: Perform a reverse lookup instead. Return source paths that depend on the given source path to
+                     generate.
+            _parent_deps: Set used to track files that have already been looked at. Prevents infinite loops.
+
+        Returns:
+            A list of source paths.
+        """
+        dependencies = set(self.get_dependencies(path, reverse=reverse))
+        for dependency in list(dependencies):
+            if dependency not in _parent_deps:
+                dependencies |= self._get_dependencies_recursive(dependency, reverse, _parent_deps=dependencies)
+        return dependencies
 
     def set_dependencies(self, source, values):
         """
@@ -250,13 +272,13 @@ class FileMap:
                     INNER JOIN sources d ON d.id = sd.dependency_id
                 WHERE s.path = ?)
             """, (rel, ))
-        id = self._add_source(source)
+        sid = self._add_source(source)
         value_ids = [self._add_source(value) for value in values]
         self.cursor.executemany("""
             INSERT INTO source_dependencies
                 (source_id, dependency_id)
                 VALUES (?, ?)
-            """, [(id, value_id) for value_id in value_ids])
+            """, [(sid, value_id) for value_id in value_ids])
 
     def _add_source(self, source):
         """

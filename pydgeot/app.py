@@ -163,28 +163,48 @@ class App:
                 return processor
         return None
 
-    def _process_func(self, path, name):
+    def _processor_call(self, name, path, default=None):
         """
-        Find a processor to handle a path, and process it with the named event.
+        Helper method to call a function on a paths appropriate file processor.
+
+        Args:
+            name: Name of the function to call.
+            path: File path to process.
+            args: List of extra arguments to pass.
+            kwargs: Dictionary of extra keyword arguments to pass.
+            default: Default value to return if no processor can be found.
+
+        Returns:
+            A tuple containing the processor used, and its return value of the method called.
+        """
+        processor = self.get_processor(path)
+        if processor is not None and hasattr(processor, name):
+            try:
+                value = getattr(processor, name)(path)
+                return processor, value
+            except Exception:
+                rel = os.path.relpath(path, self.source_root)
+                proc_name = processor.__class__.__name__
+                self.log.exception('Exception occurred processing \'%s\' %s with %s', rel, name, proc_name)
+        return None, default
+
+    def _processor_process_call(self, name, path):
+        """
+        Helper method to call and log a process function on a paths appropriate file processor.
 
         Args:
             path: File path to process.
-            name: Name of the event to process with (create, update, or delete).
+            name: Name of the function to call.
 
         Returns:
-            The return value of the process method called, or None if no processor could be found.
+            The return value of the processor method to be called.
         """
-        processor = self.get_processor(path)
-        if processor is not None and hasattr(processor, 'process_' + name):
-            rel = os.path.relpath(path, self.source_root)
+        rel = os.path.relpath(path, self.source_root)
+        processor, value = self._processor_call('process_' + name, path)
+        if processor is not None:
             proc_name = processor.__class__.__name__
-            try:
-                value = getattr(processor, 'process_' + name)(path)
-                self.log.info('Processed \'%s\' %s with %s', rel, name, proc_name)
-                return value
-            except Exception as e:
-                self.log.exception('Exception occurred processing \'%s\' %s with %s',
-                                   rel, name, proc_name)
+            self.log.info('Processed \'%s\' %s with %s', rel, name, proc_name)
+            return value
         return None
 
     def process_create(self, path):
@@ -197,7 +217,7 @@ class App:
         Returns:
             A list of files generated for the path, or None if no processor could be found.
         """
-        return self._process_func(path, 'create')
+        return self._processor_process_call('create', path)
 
     def process_update(self, path):
         """
@@ -209,7 +229,7 @@ class App:
         Returns:
             A list of files generated for the path, or None if no processor could be found.
         """
-        return self._process_func(path, 'update')
+        return self._processor_process_call('update', path)
 
     def process_delete(self, path):
         """
@@ -221,7 +241,20 @@ class App:
         Returns:
             None
         """
-        return self._process_func(path, 'delete')
+        return self._processor_process_call('delete', path)
+
+    def get_dependencies(self, path):
+        """
+        Get a list of files the given path depends on.
+
+        Args:
+            source: Path to get dependency paths for.
+
+        Returns:
+            A list of paths.
+        """
+        processor, value = self._processor_call('get_dependencies', path, default=[])
+        return value
 
     def run_command(self, name, *args):
         """

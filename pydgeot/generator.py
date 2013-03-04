@@ -51,17 +51,16 @@ class Generator:
             self.app.filemap.remove_source(path)
             self.app.filemap.commit()
 
-        # Get any files that are dependent on updated files, and add them to the ChangeSet to be rebuilt.
-        dependencies = set()
-        for path in changes.update:
-            dependencies |= set(self.app.filemap.get_dependencies(path, reverse=True))
-        changes.update |= dependencies
+        # Update dependencies for new or updated files
+        for path in list(changes.create | changes.update):
+            dependencies = self.app.get_dependencies(path)
+            self.app.filemap.set_dependencies(path, dependencies)
+            changes.update |= self.app.filemap.get_dependencies(path, reverse=True, recursive=True)
 
         for path in changes.create | changes.update:
             proc_func = self.app.process_create if path in changes.create else self.app.process_update
             targets = proc_func(path)
             if targets is not None:
-                self.app.filemap.set_dependencies(path, dependencies)
                 self.app.filemap.set_targets(path, targets)
                 self.app.filemap.commit()
 
@@ -109,7 +108,7 @@ class Generator:
             if not any((old_path == path for path, mtime in current_sources)):
                 changes.delete.add(old_path)
 
-        for dir in dirs:
-            changes.merge(self.collect_changes(dir))
+        for path in dirs:
+            changes.merge(self.collect_changes(path))
 
         return changes

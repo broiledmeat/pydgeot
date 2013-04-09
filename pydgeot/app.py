@@ -44,22 +44,23 @@ class App:
         importlib.import_module('pydgeot.commands.builtins')
         self._commands.update(commands.available['builtins'])
 
+        self.log = logging.getLogger('app')
+        self.log.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        console_handler.setLevel(logging.INFO)
+        self.log.addHandler(console_handler)
+
         if self.is_valid:
             # Make source root if necessary
             os.makedirs(self.source_root, exist_ok=True)
 
             # Config logging
             os.makedirs(self.log_root, exist_ok=True)
-            self.log = logging.getLogger('app')
-            self.log.setLevel(logging.DEBUG)
-            formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
             file_handler = logging.FileHandler(os.path.join(self.log_root, 'app.log'))
             file_handler.setFormatter(formatter)
-            console_handler = logging.StreamHandler()
-            console_handler.setFormatter(formatter)
-            console_handler.setLevel(logging.INFO)
             self.log.addHandler(file_handler)
-            self.log.addHandler(console_handler)
 
             # Load filemap
             self.filemap = FileMap(self, os.path.join(self.store_root, 'filemap.db'))

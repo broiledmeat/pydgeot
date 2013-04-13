@@ -71,7 +71,7 @@ if sys.platform == 'linux':
 
         class FSObserver(_FSObserverBase, pyinotify.ProcessEvent):
             """
-            File system observer using Pyinotify.
+            File system observer for Linux using inotify.
             """
             observer = 'inotify'
             def start(self):
@@ -158,6 +158,27 @@ elif sys.platform == 'win32':
                     return False
                 except IOError:
                     return True
+    except ImportError:
+        pass
+
+elif sys.platform == 'darwin':
+    try:
+        from fsevents import Observer, Stream
+        class FSObserver(_FSObserverBase):
+            """
+            File system observer for OSX using fsevents.
+            """
+            observer = 'fsevents'
+            def start(self):
+                def process_event(e):
+                    self.queue_changed(e.name)
+                observer = Observer()
+                stream = Stream(process_event, self.path, file_events=True)
+                observer.schedule(stream)
+                observer.start()
+                while True:
+                    time.sleep(2)
+                    self.signal_changed()
     except ImportError:
         pass
 

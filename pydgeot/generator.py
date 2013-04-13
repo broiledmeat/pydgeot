@@ -85,13 +85,14 @@ class Generator:
 
         old_sources = self.app.filemap.get_sources(root, mtimes=True)
         current_sources = []
-        for filename in os.listdir(root):
-            path = os.path.join(root, filename)
-            stat = os.stat(path)
-            if os.path.isdir(path):
-                dirs.add(path)
-            else:
-                current_sources.append((path, stat.st_mtime))
+        if os.path.isdir(root):
+            for filename in os.listdir(root):
+                path = os.path.join(root, filename)
+                stat = os.stat(path)
+                if os.path.isdir(path):
+                    dirs.add(path)
+                else:
+                    current_sources.append((path, stat.st_mtime))
 
         for path, mtime in current_sources:
             found_old = False

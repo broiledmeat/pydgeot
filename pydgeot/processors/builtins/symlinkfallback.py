@@ -1,6 +1,5 @@
 import sys
 import os
-import shutil
 from pydgeot.processors import register, Processor
 
 if sys.platform == 'win32':

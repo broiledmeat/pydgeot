@@ -58,7 +58,7 @@ class App:
 
             # Config logging
             os.makedirs(self.log_root, exist_ok=True)
-            file_handler = logging.FileHandler(os.path.join(self.log_root, 'app.log'))
+            file_handler = logging.FileHandler(os.path.join(self.log_root, 'app.log'), encoding='utf-8')
             file_handler.setFormatter(formatter)
             self.log.addHandler(file_handler)
 

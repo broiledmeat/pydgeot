@@ -2,7 +2,7 @@ import sys
 import os
 import time
 
-class _FSObserverBase:
+class _ObserverBase:
     """
     Base class for file system observers. Queues file changes and signals change events.
     """
@@ -69,7 +69,7 @@ if sys.platform == 'linux':
     try:
         import pyinotify
 
-        class FSObserver(_FSObserverBase, pyinotify.ProcessEvent):
+        class Observer(_ObserverBase, pyinotify.ProcessEvent):
             """
             File system observer for Linux using inotify.
             """
@@ -106,7 +106,7 @@ elif sys.platform == 'win32':
         import win32event
         import pywintypes
 
-        class FSObserver(_FSObserverBase):
+        class Observer(_ObserverBase):
             """
             File system observer for Windows.
             """
@@ -164,7 +164,7 @@ elif sys.platform == 'win32':
 elif sys.platform == 'darwin':
     try:
         from fsevents import Observer, Stream
-        class FSObserver(_FSObserverBase):
+        class Observer(_ObserverBase):
             """
             File system observer for OSX using fsevents.
             """
@@ -185,7 +185,7 @@ elif sys.platform == 'darwin':
 if 'FSObserver' not in globals():
     import time
 
-    class FSObserver(_FSObserverBase):
+    class Observer(_ObserverBase):
         """
         Platform independent fallback file system observer.
         """

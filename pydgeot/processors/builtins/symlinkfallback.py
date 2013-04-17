@@ -1,22 +1,7 @@
-import sys
 import os
 from pydgeot.processors import register, Processor
+from pydgeot.utils.filesystem import create_symlink
 
-if sys.platform == 'win32':
-    try:
-        import win32file
-        def create_symlink(source, target):
-            if os.path.isfile(target):
-                os.remove(target)
-            win32file.CreateSymbolicLink(target, source)
-    except ImportError:
-        pass
-
-if 'create_symlink' not in globals():
-    def create_symlink(source, target):
-        if os.path.isfile(target):
-            os.remove(target)
-        os.symlink(source, target)
 
 @register()
 class SymlinkFallbackProcessor(Processor):

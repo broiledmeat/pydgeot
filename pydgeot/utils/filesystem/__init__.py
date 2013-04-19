@@ -1,5 +1,10 @@
 import sys
 import os
+import stat
+
+def is_dotfile(path):
+    parts = path.split(os.sep)
+    return any([part != '..' and part.startswith('.') for part in parts])
 
 if sys.platform == 'win32':
     try:
@@ -16,17 +21,12 @@ if sys.platform == 'win32':
             except (AttributeError, AssertionError):
                 return False
     except ImportError:
-        pass
+        def is_hidden(path):
+            return False
 
 elif sys.platform == 'darwin':
-    try:
-        import Foundation
-
-        def is_hidden(path):
-            url = Foundation.NSURL.fileURLWithPath_(path)
-            return url.getResourceValue_forKey_error_(None, Foundation.NSURLIsHiddenKey, None)[0]
-    except ImportError:
-        pass
+    def is_hidden(path):
+        return is_dotfile(path) or os.stat(path).st_flags & stat.UF_HIDDEN > 0
 
 if 'create_symlink' not in globals():
     def create_symlink(source, target):
@@ -35,6 +35,5 @@ if 'create_symlink' not in globals():
         os.symlink(source, target)
 
 if 'is_hidden' not in globals():
-    def is_hidden(path):
-        parts = path.split(os.sep)
-        return any([part != '..' and part.startswith('.') for part in parts])
+    is_hidden = is_dotfile
+

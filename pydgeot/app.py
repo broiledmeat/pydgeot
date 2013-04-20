@@ -7,11 +7,14 @@ import pkgutil
 from pydgeot import processors, commands
 from pydgeot.filemap import FileMap
 
+
 class InvalidAppRoot(Exception):
     pass
 
+
 class AppError(Exception):
     pass
+
 
 class App:
     def __init__(self, root=None):

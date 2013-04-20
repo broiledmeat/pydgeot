@@ -12,6 +12,3 @@ def create(app, path):
         raise CommandError('Target directory \'{0}\' already exists'.format(root))
 
     App.create(root)
-
-
-

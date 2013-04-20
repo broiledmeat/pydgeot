@@ -1,6 +1,7 @@
 import os
-from pydgeot.processors import register, Processor
 from lesscpy.lessc import parser, formatter
+from pydgeot.processors import register, Processor
+
 
 @register()
 class LessCSSProcessor(Processor):

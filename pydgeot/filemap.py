@@ -1,6 +1,7 @@
 import os
 import sqlite3
 
+
 def re_fn(expr, item):
     """
     REGEXP function for SQLite. Return true if a match is found.
@@ -8,6 +9,7 @@ def re_fn(expr, item):
     import re
     reg = re.compile(expr, re.I)
     return reg.search(item) is not None
+
 
 class FileMap:
     """

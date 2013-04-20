@@ -10,10 +10,12 @@ def watch(app, *args):
         gen.generate()
 
         obs = Observer(app.source_root)
+
         def on_changed(self, path):
             root = os.path.dirname(path)
             changes = gen.collect_changes(root)
             gen.process_changes(changes)
+
         setattr(Observer, on_changed.__name__, types.MethodType(on_changed, Observer))
         obs.start()
     else:

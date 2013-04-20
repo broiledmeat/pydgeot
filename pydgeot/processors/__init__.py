@@ -3,17 +3,21 @@ import inspect
 
 available = {}
 
+
 class Processor:
     """
     Base class for file processors.
     """
-    priority = 50 # Processors can_process methods are checked in order of priority. Higher priority is checked earlier.
+    priority = 50  # Processors can_process methods are checked in order of priority. Higher priority processors
+                   # are checked earlier.
+
     def __init__(self, app):
         """
         Args:
             app: Parent App instance.
         """
         self.app = app
+
     def can_process(self, path):
         """
         Check if the Processor is able to process the given file path.
@@ -25,6 +29,7 @@ class Processor:
             True if the file path is processable, False otherwise.
         """
         return False
+
     def process_create(self, path):
         """
         Process a new source file.
@@ -36,6 +41,7 @@ class Processor:
             A list of file paths that were built.
         """
         return self.process_update(path)
+
     def process_update(self, path):
         """
         Process an updated source file.
@@ -47,6 +53,7 @@ class Processor:
             A list of file paths that were built.
         """
         return []
+
     def process_delete(self, path):
         """
         Process a deleted file.
@@ -58,11 +65,12 @@ class Processor:
             if os.path.isfile(target):
                 try:
                     os.remove(target)
-                    dir = os.path.dirname(target)
-                    if not os.listdir(dir):
-                        os.rmdir(dir)
+                    root = os.path.dirname(target)
+                    if not os.listdir(root):
+                        os.rmdir(root)
                 except PermissionError:
                     pass
+
     def get_dependencies(self, path):
         """
         Get other files the given file depends on.
@@ -74,16 +82,19 @@ class Processor:
             A list of file dependencies.
         """
         return []
+
     def process_changes_complete(self):
         """
         Called after a Generator instance finishes processing a group of changes.
         """
         pass
+
     def reset(self):
         """
         Called when an App instance is reset.
         """
         pass
+
 
 class register:
     """

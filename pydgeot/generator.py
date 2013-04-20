@@ -1,5 +1,6 @@
 import os
 
+
 class ChangeSet:
     """
     Contains a set of file changes.
@@ -8,6 +9,7 @@ class ChangeSet:
         self.create = set()
         self.update = set()
         self.delete = set()
+
     def merge(self, other):
         """
         Merge from another ChangeSet.
@@ -18,6 +20,7 @@ class ChangeSet:
         self.create |= other.create
         self.update |= other.update
         self.delete |= other.delete
+
 
 class Generator:
     """

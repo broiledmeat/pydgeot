@@ -2,6 +2,7 @@ import sys
 import os
 import stat
 
+
 def is_dotfile(path):
     parts = path.split(os.sep)
     return any([part != '..' and part.startswith('.') for part in parts])
@@ -36,4 +37,3 @@ if 'create_symlink' not in globals():
 
 if 'is_hidden' not in globals():
     is_hidden = is_dotfile
-

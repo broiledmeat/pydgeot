@@ -2,6 +2,7 @@ import os
 import jinja2
 from pydgeot.processors import register, Processor
 
+
 @register()
 class JinjaProcessor(Processor):
     TEMPLATE_FIELDS = {
@@ -49,11 +50,11 @@ class JinjaProcessor(Processor):
             fields[name] = self._get_template_field_value(node, self.TEMPLATE_FIELDS[name][0])
         return fields
 
-    def _get_template_field_value(self, node, type=str):
+    def _get_template_field_value(self, node, value_type=str):
         if isinstance(node, jinja2.nodes.List):
             values = dict(node.iter_fields())['items']
-            value = [self._get_template_field_value(v, type) for v in values]
-        elif type is bool:
+            value = [self._get_template_field_value(v, value_type) for v in values]
+        elif value_type is bool:
             value = isinstance(node.value, bool) and node.value
         else:
             value = str(node.value)

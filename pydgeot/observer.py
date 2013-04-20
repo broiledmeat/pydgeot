@@ -2,12 +2,14 @@ import sys
 import os
 import time
 
+
 class _ObserverBase:
     """
     Base class for file system observers. Queues file changes and signals change events.
     """
     observer = None
     changed_timeout = 10
+
     def __init__(self, path):
         """
         Initialize the observer.
@@ -17,11 +19,13 @@ class _ObserverBase:
         """
         self.path = path
         self.changed = {}
+
     def start(self):
         """
         Start file system observation loop.
         """
         pass
+
     def queue_changed(self, path):
         """
         Place a file change event in to the change queue. Should be called from the observation loop when file changes
@@ -32,6 +36,7 @@ class _ObserverBase:
         """
         if not os.path.isdir(path):
             self.changed[path] = time.time()
+
     def signal_changed(self):
         """
         Iterate through the change queue, signaling changes for those that are not locked, and have passed the changed
@@ -44,6 +49,7 @@ class _ObserverBase:
             if mtime + self.changed_timeout < stime:
                 self.on_changed(path)
                 del self.changed[path]
+
     def on_changed(self, path):
         """
         Called when a file change has been through the queue and timed out (when the file can be sure to have finished
@@ -53,6 +59,7 @@ class _ObserverBase:
             path: File path to signal as having been changed.
         """
         pass
+
     def is_locked(self, path):
         """
         Check if a file is locked (still being written to.)
@@ -74,6 +81,7 @@ if sys.platform == 'linux':
             File system observer for Linux using inotify.
             """
             observer = 'inotify'
+
             def start(self):
                 mask = pyinotify.IN_CREATE | \
                     pyinotify.IN_DELETE | \
@@ -88,6 +96,7 @@ if sys.platform == 'linux':
                     if notifier.check_events(2000):
                         notifier.read_events()
                     self.signal_changed()
+
             def process_default(self, e):
                 """
                 Pyinotify catch-all change event.
@@ -111,6 +120,7 @@ elif sys.platform == 'win32':
             File system observer for Windows.
             """
             observer = 'win32'
+
             def start(self):
                 handle = win32file.CreateFile(
                     self.path,
@@ -146,6 +156,7 @@ elif sys.platform == 'win32':
                                 path = os.path.abspath(os.path.join(self.path, path))
                                 self.queue_changed(path)
                     self.signal_changed()
+
             def is_locked(self, path):
                 if not os.path.exists(path):
                     return False
@@ -164,11 +175,13 @@ elif sys.platform == 'win32':
 elif sys.platform == 'darwin':
     try:
         from fsevents import Observer, Stream
+
         class Observer(_ObserverBase):
             """
             File system observer for OSX using fsevents.
             """
             observer = 'fsevents'
+
             def start(self):
                 def process_event(e):
                     self.queue_changed(e.name)
@@ -191,6 +204,7 @@ if 'FSObserver' not in globals():
         """
         observer = 'fallback'
         changed_timeout = 25
+
         def start(self):
             before = self.get_files_list()
             while True:
@@ -204,6 +218,7 @@ if 'FSObserver' not in globals():
                     self.queue_changed(path)
                 before = after
                 self.signal_changed()
+
         def get_files_list(self):
             """
             Get a flat list of file paths with modified times.

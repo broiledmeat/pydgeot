@@ -4,6 +4,7 @@ import logging
 import json
 import importlib
 import pkgutil
+import sqlite3
 from pydgeot import processors, commands
 from pydgeot.filemap import FileMap
 
@@ -14,6 +15,32 @@ class InvalidAppRoot(Exception):
 
 class AppError(Exception):
     pass
+
+
+class Database:
+    def __init__(self, path):
+        """
+        Create a new SQLite database connection.
+
+        Args:
+            path: The filepath to open for the SQLite connection.
+        """
+        self.path = path
+        self.connection = sqlite3.connect(path)
+        self.cursor = self.connection.cursor()
+
+    def commit(self):
+        """
+        Commit database changes.
+        """
+        self.connection.commit()
+
+    def reset(self):
+        """
+        Recreate the database.
+        """
+        os.unlink(self.path)
+        self.__init__(self.path)
 
 
 class App:
@@ -65,8 +92,11 @@ class App:
             file_handler.setFormatter(formatter)
             self.log.addHandler(file_handler)
 
+            # Init database
+            self.db = Database(os.path.join(self.store_root, 'pydgeot.db'))
+
             # Load filemap
-            self.filemap = FileMap(self, os.path.join(self.store_root, 'filemap.db'))
+            self.filemap = FileMap(self)
 
             # Get settings
             try:
@@ -130,7 +160,7 @@ class App:
                     os.remove(os.path.join(root, name))
                 for name in dirs:
                     os.rmdir(os.path.join(root, name))
-        self.filemap.reset()
+        self.db.reset()
 
     def clean(self, paths=None):
         """

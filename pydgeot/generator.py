@@ -52,7 +52,6 @@ class Generator:
         for path in changes.delete:
             self.app.process_delete(path)
             self.app.filemap.remove_source(path)
-            self.app.filemap.commit()
 
         # Update dependencies for new or updated files
         for path in list(changes.create | changes.update):
@@ -65,7 +64,6 @@ class Generator:
             targets = proc_func(path)
             if targets is not None:
                 self.app.filemap.set_targets(path, targets)
-                self.app.filemap.commit()
 
         for processor in self.app._processors:
             processor.process_changes_complete()

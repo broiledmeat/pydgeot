@@ -1,5 +1,4 @@
 import os
-import sqlite3
 
 
 def re_fn(expr, item):
@@ -19,7 +18,7 @@ class FileMap:
 
     All methods expect absolute paths, in either the Apps content or build directories.
     """
-    def __init__(self, app, path):
+    def __init__(self, app):
         """
         Establish an SQLite database connection, and create tables if necessary.
 
@@ -28,10 +27,8 @@ class FileMap:
             path: SQLite database path.
         """
         self.app = app
-        self.connection = sqlite3.connect(path)
-        self.cursor = self.connection.cursor()
-
-        self.connection.create_function('REGEXP', 2, re_fn)
+        self.cursor = self.app.db.cursor
+        self.app.db.connection.create_function('REGEXP', 2, re_fn)
 
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS sources (
@@ -63,24 +60,6 @@ class FileMap:
                     ON UPDATE CASCADE
             )""")
 
-    def commit(self):
-        """
-        Commit database changes.
-        """
-        self.connection.commit()
-
-    def reset(self):
-        """
-        Delete all entries.
-        """
-        self.cursor.execute("DELETE FROM source_dependencies")
-        self.cursor.execute("DELETE FROM source_targets")
-        self.cursor.execute("DELETE FROM sources")
-        self.cursor.execute("delete from sqlite_sequence where name='source_dependencies'")
-        self.cursor.execute("delete from sqlite_sequence where name='source_targets'")
-        self.cursor.execute("delete from sqlite_sequence where name='sources'")
-        self.commit()
-
     def clean(self, paths):
         """
         Delete entries under the given source directories and their subdirectories.
@@ -102,7 +81,7 @@ class FileMap:
                     """.format(id_query), (ids + ids))
                 self.cursor.execute("DELETE FROM source_targets WHERE source_id IN {0}".format(id_query), ids)
                 self.cursor.execute("DELETE FROM sources WHERE id IN {0}".format(id_query), ids)
-        self.commit()
+        self.app.db.commit()
 
     def get_sources(self, prefix=None, mtimes=False):
         """
@@ -141,6 +120,7 @@ class FileMap:
             self.cursor.execute("DELETE FROM source_targets WHERE source_id = ?", (sid, ))
             self.cursor.execute("DELETE FROM source_dependencies WHERE source_id = ? OR dependency_id = ?", (sid, sid))
             self.cursor.execute("DELETE FROM sources WHERE id = ?", (sid, ))
+        self.app.db.commit()
 
     def get_targets(self, source, reverse=False):
         """
@@ -196,6 +176,7 @@ class FileMap:
                 (source_id, path)
                 VALUES (?, ?)
             """, ([(sid, self._relative_path(value)) for value in values]))
+        self.app.db.commit()
 
     def get_dependencies(self, source, reverse=False, recursive=False):
         """
@@ -281,6 +262,7 @@ class FileMap:
                 (source_id, dependency_id)
                 VALUES (?, ?)
             """, [(sid, value_id) for value_id in value_ids])
+        self.app.db.commit()
 
     def _add_source(self, source):
         """

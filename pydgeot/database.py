@@ -1,4 +1,5 @@
 import os
+import sqlite3
 
 
 def re_fn(expr, item):
@@ -10,15 +11,15 @@ def re_fn(expr, item):
     return reg.search(item) is not None
 
 
-class FileMap:
+class Database:
     """
-    Stores file information for generated content in a persistent SQLite database. When content is being generated, this
-    information is used to determine what files are new, updated, or deleted. It also stores what files are built from
-    a source file, as well as what other source files it may depend on.
+    Provides a common database connection for Processors. Stores file information for generated content. When content is
+    being generated, this information is used to determine what files are new, updated, or deleted. It also stores what
+    files are built from a source file, as well as what other source files it may depend on.
 
-    All methods expect absolute paths, in either the Apps content or build directories.
+    All source and target file related methods expect absolute paths, in either the Apps content or build directories.
     """
-    def __init__(self, app):
+    def __init__(self, app, path):
         """
         Establish an SQLite database connection, and create tables if necessary.
 
@@ -27,9 +28,11 @@ class FileMap:
             path: SQLite database path.
         """
         self.app = app
-        self.cursor = self.app.db.cursor
-        self.app.db.connection.create_function('REGEXP', 2, re_fn)
+        self.path = path
+        self.connection = sqlite3.connect(path)
+        self.cursor = self.connection.cursor()
 
+        self.connection.create_function('REGEXP', 2, re_fn)
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS sources (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,6 +63,19 @@ class FileMap:
                     ON UPDATE CASCADE
             )""")
 
+    def commit(self):
+        """
+        Commit database changes.
+        """
+        self.connection.commit()
+
+    def reset(self):
+        """
+        Recreate the database.
+        """
+        os.unlink(self.path)
+        self.__init__(self.app, self.path)
+
     def clean(self, paths):
         """
         Delete entries under the given source directories and their subdirectories.
@@ -68,7 +84,7 @@ class FileMap:
             paths: List of content directory paths to delete entries for.
         """
         for path in paths:
-            regex = self._regex(path, subdirs=True)
+            regex = self.app.db.path_regex(path, subdirs=True)
             self.cursor.execute("SELECT id FROM sources WHERE path REGEXP ?", (regex, ))
             ids = [result[0] for result in self.cursor.fetchall()]
             if len(ids) > 0:
@@ -81,7 +97,41 @@ class FileMap:
                     """.format(id_query), (ids + ids))
                 self.cursor.execute("DELETE FROM source_targets WHERE source_id IN {0}".format(id_query), ids)
                 self.cursor.execute("DELETE FROM sources WHERE id IN {0}".format(id_query), ids)
-        self.app.db.commit()
+        self.commit()
+
+    def add_source(self, source):
+        """
+        Add a source entry to the database. Updates file information if the entry already exists.
+
+        Args:
+            source: Source path to add.
+
+        Returns:
+            The entries database id.
+        """
+        rel = self.relative_path(source)
+        try:
+            stats = os.stat(source)
+            size = stats.st_size
+            mtime = stats.st_mtime
+        except FileNotFoundError:
+            size = 0
+            mtime = 0
+
+        self.cursor.execute("SELECT id, size, modified FROM sources WHERE path = ?", (rel, ))
+        result = self.cursor.fetchone()
+        if result is not None:
+            if size != result[1] or mtime != result[2]:
+                self.cursor.execute("UPDATE sources SET size = ?, modified = ? WHERE id = ?", (size, mtime, result[0]))
+            return result[0]
+
+        self.cursor.execute("""
+            INSERT INTO sources
+                (path, size, modified)
+                VALUES (?, ?, ?)
+                """, (rel, size, mtime))
+        self.commit()
+        return self.cursor.lastrowid
 
     def get_sources(self, prefix=None, mtimes=False):
         """
@@ -98,12 +148,12 @@ class FileMap:
         if prefix is None:
             results = self.cursor.execute('SELECT path, modified FROM sources')
         else:
-            regex = self._regex(prefix)
+            regex = self.path_regex(prefix)
             results = self.cursor.execute('SELECT path, modified FROM sources WHERE path REGEXP ?', (regex, ))
         if mtimes:
-            return [(self._source_path(result[0]), result[1]) for result in results]
+            return [(self.source_path(result[0]), result[1]) for result in results]
         else:
-            return [self._source_path(result[0]) for result in results]
+            return [self.source_path(result[0]) for result in results]
 
     def remove_source(self, source):
         """
@@ -112,7 +162,7 @@ class FileMap:
         Args:
             source: Source file path to remove.
         """
-        rel = self._relative_path(source)
+        rel = self.relative_path(source)
         self.cursor.execute("SELECT id FROM sources WHERE path = ?", (rel, ))
         result = self.cursor.fetchone()
         if result is not None:
@@ -120,7 +170,7 @@ class FileMap:
             self.cursor.execute("DELETE FROM source_targets WHERE source_id = ?", (sid, ))
             self.cursor.execute("DELETE FROM source_dependencies WHERE source_id = ? OR dependency_id = ?", (sid, sid))
             self.cursor.execute("DELETE FROM sources WHERE id = ?", (sid, ))
-        self.app.db.commit()
+        self.commit()
 
     def get_targets(self, source, reverse=False):
         """
@@ -134,7 +184,7 @@ class FileMap:
         Returns:
             A list of target paths (or source paths, if reverse is True.)
         """
-        rel = self._relative_path(source)
+        rel = self.relative_path(source)
         if reverse:
             results = self.cursor.execute("""
                 SELECT s.path
@@ -142,7 +192,7 @@ class FileMap:
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE st.path = ?
                 """, (rel, ))
-            return [self._source_path(result[0]) for result in results]
+            return [self.source_path(result[0]) for result in results]
         else:
             results = self.cursor.execute("""
                 SELECT st.path
@@ -150,7 +200,7 @@ class FileMap:
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE s.path = ?
                 """, (rel, ))
-            return [self._target_path(result[0]) for result in results]
+            return [self.target_path(result[0]) for result in results]
 
     def set_targets(self, source, values):
         """
@@ -160,7 +210,7 @@ class FileMap:
             source: Source path to set target paths for.
             values: List of target paths.
         """
-        rel = self._relative_path(source)
+        rel = self.relative_path(source)
         self.cursor.execute("""
             DELETE
             FROM source_targets
@@ -170,13 +220,13 @@ class FileMap:
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE s.path = ?)
             """, (rel, ))
-        sid = self._add_source(source)
+        sid = self.add_source(source)
         self.cursor.executemany("""
             INSERT INTO source_targets
                 (source_id, path)
                 VALUES (?, ?)
-            """, ([(sid, self._relative_path(value)) for value in values]))
-        self.app.db.commit()
+            """, ([(sid, self.relative_path(value)) for value in values]))
+        self.commit()
 
     def get_dependencies(self, source, reverse=False, recursive=False):
         """
@@ -198,7 +248,7 @@ class FileMap:
         """
         if recursive:
             return self._get_dependencies_recursive(source, reverse)
-        rel = self._relative_path(source)
+        rel = self.relative_path(source)
         if reverse:
             results = self.cursor.execute("""
                 SELECT s.path
@@ -215,7 +265,7 @@ class FileMap:
                     INNER JOIN sources d ON d.id = sd.dependency_id
                 WHERE s.path = ?
                 """, (rel, ))
-        return [self._source_path(result[0]) for result in results]
+        return [self.source_path(result[0]) for result in results]
 
     def _get_dependencies_recursive(self, path, reverse, _parent_deps=set()):
         """
@@ -244,7 +294,7 @@ class FileMap:
             source: Source path to set dependency paths for.
             values: List of source dependency paths.
         """
-        rel = self._relative_path(source)
+        rel = self.relative_path(source)
         self.cursor.execute("""
             DELETE
             FROM source_dependencies
@@ -255,49 +305,16 @@ class FileMap:
                     INNER JOIN sources d ON d.id = sd.dependency_id
                 WHERE s.path = ?)
             """, (rel, ))
-        sid = self._add_source(source)
-        value_ids = [self._add_source(value) for value in values]
+        sid = self.add_source(source)
+        value_ids = [self.add_source(value) for value in values]
         self.cursor.executemany("""
             INSERT INTO source_dependencies
                 (source_id, dependency_id)
                 VALUES (?, ?)
             """, [(sid, value_id) for value_id in value_ids])
-        self.app.db.commit()
+        self.commit()
 
-    def _add_source(self, source):
-        """
-        Add a source entry to the database. Updates file information if the entry already exists.
-
-        Args:
-            source: Source path to add.
-
-        Returns:
-            The entries database id.
-        """
-        rel = self._relative_path(source)
-        try:
-            stats = os.stat(source)
-            size = stats.st_size
-            mtime = stats.st_mtime
-        except FileNotFoundError:
-            size = 0
-            mtime = 0
-
-        self.cursor.execute("SELECT id, size, modified FROM sources WHERE path = ?", (rel, ))
-        result = self.cursor.fetchone()
-        if result is not None:
-            if size != result[1] or mtime != result[2]:
-                self.cursor.execute("UPDATE sources SET size = ?, modified = ? WHERE id = ?", (size, mtime, result[0]))
-            return result[0]
-
-        self.cursor.execute("""
-            INSERT INTO sources
-                (path, size, modified)
-                VALUES (?, ?, ?)
-                """, (rel, size, mtime))
-        return self.cursor.lastrowid
-
-    def _source_path(self, relative):
+    def source_path(self, relative):
         """
         Get a source path given a relative path.
 
@@ -309,7 +326,7 @@ class FileMap:
         """
         return os.path.join(self.app.source_root, relative)
 
-    def _target_path(self, relative):
+    def target_path(self, relative):
         """
         Get a target path given a relative path.
 
@@ -321,7 +338,7 @@ class FileMap:
         """
         return os.path.join(self.app.build_root, relative)
 
-    def _relative_path(self, path):
+    def relative_path(self, path):
         """
         Get a relative path from a source or target path.
 
@@ -338,7 +355,7 @@ class FileMap:
         path = '' if path == '.' else path
         return path
 
-    def _regex(self, path, subdirs=False):
+    def path_regex(self, path, subdirs=False):
         """
         Get a regex for the given directory path. Used for retrieving file paths in or under the given directory.
 
@@ -349,7 +366,7 @@ class FileMap:
         Returns:
             A regex string.
         """
-        rel = self._relative_path(path)
+        rel = self.relative_path(path)
         if subdirs:
             match = '.*'
         else:

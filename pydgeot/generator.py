@@ -51,19 +51,19 @@ class Generator:
         """
         for path in changes.delete:
             self.app.process_delete(path)
-            self.app.filemap.remove_source(path)
+            self.app.db.remove_source(path)
 
         # Update dependencies for new or updated files
         for path in list(changes.create | changes.update):
             dependencies = self.app.get_dependencies(path)
-            self.app.filemap.set_dependencies(path, dependencies)
-            changes.update |= self.app.filemap.get_dependencies(path, reverse=True, recursive=True)
+            self.app.db.set_dependencies(path, dependencies)
+            changes.update |= self.app.db.get_dependencies(path, reverse=True, recursive=True)
 
         for path in changes.create | changes.update:
             proc_func = self.app.process_create if path in changes.create else self.app.process_update
             targets = proc_func(path)
             if targets is not None:
-                self.app.filemap.set_targets(path, targets)
+                self.app.db.set_targets(path, targets)
 
         for processor in self.app._processors:
             processor.process_changes_complete()
@@ -84,7 +84,7 @@ class Generator:
 
         dirs = set()
 
-        old_sources = self.app.filemap.get_sources(root, mtimes=True)
+        old_sources = self.app.db.get_sources(root, mtimes=True)
         current_sources = []
         if os.path.isdir(root):
             for filename in os.listdir(root):

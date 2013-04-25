@@ -247,7 +247,7 @@ class App:
         """
         return self._processor_process_call('delete', path)
 
-    def get_dependencies(self, path):
+    def process_get_dependencies(self, path):
         """
         Get a list of files the given path depends on.
 

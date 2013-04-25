@@ -55,7 +55,7 @@ class Generator:
 
         # Update dependencies for new or updated files
         for path in list(changes.create | changes.update):
-            dependencies = self.app.get_dependencies(path)
+            dependencies = self.app.process_get_dependencies(path)
             self.app.db.set_dependencies(path, dependencies)
             changes.update |= self.app.db.get_dependencies(path, reverse=True, recursive=True)
 

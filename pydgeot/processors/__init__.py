@@ -30,38 +30,32 @@ class Processor:
         """
         return False
 
-    def process_create(self, path):
+    def prepare(self, path):
         """
-        Process a new source file.
+        Preprocess a source file. Sets targets and dependencies, without generating content.
 
         Args:
             path: File path to process.
-
-        Returns:
-            A list of file paths that were built.
         """
-        return self.process_update(path)
+        pass
 
-    def process_update(self, path):
+    def generate(self, path):
         """
-        Process an updated source file.
+        Generate content for a prepared source file.
 
         Args:
             path: File path to process.
-
-        Returns:
-            A list of file paths that were built.
         """
-        return []
+        pass
 
-    def process_delete(self, path):
+    def delete(self, path):
         """
         Process a deleted file.
 
         Args:
             path: File path to process.
         """
-        for target in self.app.filemap.get_targets(path):
+        for target in self.app.sources.get_targets(path):
             if os.path.isfile(target):
                 try:
                     os.remove(target)
@@ -70,20 +64,10 @@ class Processor:
                         os.rmdir(root)
                 except PermissionError:
                     pass
+        self.app.contexts.remove(source=path)
+        self.app.sources.remove(path)
 
-    def get_dependencies(self, path):
-        """
-        Get other files the given file depends on.
-
-        Args:
-            Path: File path to get dependencies for.
-
-        Returns:
-            A list of file dependencies.
-        """
-        return []
-
-    def process_changes_complete(self):
+    def generation_complete(self):
         """
         Called after a Generator instance finishes processing a group of changes.
         """

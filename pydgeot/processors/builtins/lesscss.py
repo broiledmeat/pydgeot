@@ -13,7 +13,7 @@ class LessCSSProcessor(Processor):
     def can_process(self, path):
         return path.endswith('.css')
 
-    def process_update(self, path):
+    def generate(self, path):
         self.parser.parse(filename=path)
         rel = os.path.relpath(path, self.app.source_root)
         target = os.path.join(self.app.build_root, rel)
@@ -21,7 +21,7 @@ class LessCSSProcessor(Processor):
         f = open(target, 'w')
         f.write(self.formatter.format(self.parser))
         f.close()
-        return [target]
+        self.app.sources.set_targets(path, [target])
 
     class _LessOpts:
         def __init__(self):

@@ -1,56 +1,31 @@
 import os
-import sqlite3
 
 
-def re_fn(expr, item):
-    """
-    REGEXP function for SQLite. Return true if a match is found.
-    """
-    import re
-    reg = re.compile(expr, re.I)
-    return reg.search(item) is not None
-
-
-class Database:
-    """
-    Provides a common database connection for Processors. Stores file information for generated content. When content is
-    being generated, this information is used to determine what files are new, updated, or deleted. It also stores what
-    files are built from a source file, as well as what other source files it may depend on.
-
-    All source and target file related methods expect absolute paths, in either the Apps content or build directories.
-    """
-    def __init__(self, app, path):
-        """
-        Establish an SQLite database connection, and create tables if necessary.
-
-        Args:
-            app: Parent App instance.
-            path: SQLite database path.
-        """
+class Sources:
+    def __init__(self, app):
         self.app = app
-        self.path = path
-        self.connection = sqlite3.connect(path)
-        self.cursor = self.connection.cursor()
+        self.cursor = self.app.db_cursor
 
-        self.connection.create_function('REGEXP', 2, re_fn)
-        self.cursor.execute("""
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS sources (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 path TEXT NOT NULL,
                 size INTEGER NOT NULL,
                 modified INTEGER NOT NULL,
-                UNIQUE(path)
-            )""")
-        self.cursor.execute("""
+                UNIQUE(path))
+            ''')
+
+        # File map tables
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS source_targets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 source_id INTEGER NOT NULL,
                 path TEXT NOT NULL,
                 FOREIGN KEY(source_id) REFERENCES sources(id)
                     ON DELETE CASCADE
-                    ON UPDATE CASCADE
-            )""")
-        self.cursor.execute("""
+                    ON UPDATE CASCADE)
+            ''')
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS source_dependencies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 source_id INTEGER NOT NULL,
@@ -60,21 +35,8 @@ class Database:
                     ON UPDATE CASCADE,
                 FOREIGN KEY(dependency_id) REFERENCES sources(id)
                     ON DELETE CASCADE
-                    ON UPDATE CASCADE
-            )""")
-
-    def commit(self):
-        """
-        Commit database changes.
-        """
-        self.connection.commit()
-
-    def reset(self):
-        """
-        Recreate the database.
-        """
-        os.unlink(self.path)
-        self.__init__(self.app, self.path)
+                    ON UPDATE CASCADE)
+            ''')
 
     def clean(self, paths):
         """
@@ -84,22 +46,21 @@ class Database:
             paths: List of content directory paths to delete entries for.
         """
         for path in paths:
-            regex = self.app.db.path_regex(path, subdirs=True)
-            self.cursor.execute("SELECT id FROM sources WHERE path REGEXP ?", (regex, ))
+            regex = self.app.path_regex(path, subdirs=True)
+            self.cursor.execute('SELECT id FROM sources WHERE path REGEXP ?', (regex, ))
             ids = [result[0] for result in self.cursor.fetchall()]
             if len(ids) > 0:
                 id_query = '(' + ','.join('?' * len(ids)) + ')'
-                self.cursor.execute("""
+                self.cursor.execute('''
                     DELETE FROM source_dependencies
                     WHERE
                         source_id IN {0} OR
                         dependency_id IN {0}
-                    """.format(id_query), (ids + ids))
-                self.cursor.execute("DELETE FROM source_targets WHERE source_id IN {0}".format(id_query), ids)
-                self.cursor.execute("DELETE FROM sources WHERE id IN {0}".format(id_query), ids)
-        self.commit()
+                    '''.format(id_query), (ids + ids))
+                self.cursor.execute('DELETE FROM source_targets WHERE source_id IN {0}'.format(id_query), ids)
+                self.cursor.execute('DELETE FROM sources WHERE id IN {0}'.format(id_query), ids)
 
-    def add_source(self, source):
+    def add(self, source):
         """
         Add a source entry to the database. Updates file information if the entry already exists.
 
@@ -109,7 +70,7 @@ class Database:
         Returns:
             The entries database id.
         """
-        rel = self.relative_path(source)
+        rel = self.app.relative_path(source)
         try:
             stats = os.stat(source)
             size = stats.st_size
@@ -118,22 +79,22 @@ class Database:
             size = 0
             mtime = 0
 
-        self.cursor.execute("SELECT id, size, modified FROM sources WHERE path = ?", (rel, ))
+        self.cursor.execute('SELECT id, size, modified FROM sources WHERE path = ?', (rel, ))
         result = self.cursor.fetchone()
         if result is not None:
             if size != result[1] or mtime != result[2]:
-                self.cursor.execute("UPDATE sources SET size = ?, modified = ? WHERE id = ?", (size, mtime, result[0]))
+                self.cursor.execute('UPDATE sources SET size = ?, modified = ? WHERE id = ?', (size, mtime, result[0]))
             return result[0]
 
-        self.cursor.execute("""
+        self.cursor.execute('''
             INSERT INTO sources
                 (path, size, modified)
                 VALUES (?, ?, ?)
-                """, (rel, size, mtime))
-        self.commit()
+                ''', (rel, size, mtime))
+
         return self.cursor.lastrowid
 
-    def get_sources(self, prefix=None, mtimes=False):
+    def get(self, prefix=None, mtimes=False):
         """
         Get a list of source paths.
 
@@ -148,29 +109,28 @@ class Database:
         if prefix is None:
             results = self.cursor.execute('SELECT path, modified FROM sources')
         else:
-            regex = self.path_regex(prefix)
+            regex = self.app.path_regex(prefix)
             results = self.cursor.execute('SELECT path, modified FROM sources WHERE path REGEXP ?', (regex, ))
         if mtimes:
-            return [(self.source_path(result[0]), result[1]) for result in results]
+            return [(self.app.source_path(result[0]), result[1]) for result in results]
         else:
-            return [self.source_path(result[0]) for result in results]
+            return [self.app.source_path(result[0]) for result in results]
 
-    def remove_source(self, source):
+    def remove(self, source):
         """
         Remove a source entry, and any associated source dependencies and target files.
 
         Args:
             source: Source file path to remove.
         """
-        rel = self.relative_path(source)
-        self.cursor.execute("SELECT id FROM sources WHERE path = ?", (rel, ))
+        rel = self.app.relative_path(source)
+        self.cursor.execute('SELECT id FROM sources WHERE path = ?', (rel, ))
         result = self.cursor.fetchone()
         if result is not None:
             sid = result[0]
-            self.cursor.execute("DELETE FROM source_targets WHERE source_id = ?", (sid, ))
-            self.cursor.execute("DELETE FROM source_dependencies WHERE source_id = ? OR dependency_id = ?", (sid, sid))
-            self.cursor.execute("DELETE FROM sources WHERE id = ?", (sid, ))
-        self.commit()
+            self.cursor.execute('DELETE FROM source_targets WHERE source_id = ?', (sid, ))
+            self.cursor.execute('DELETE FROM source_dependencies WHERE source_id = ? OR dependency_id = ?', (sid, sid))
+            self.cursor.execute('DELETE FROM sources WHERE id = ?', (sid, ))
 
     def get_targets(self, source, reverse=False):
         """
@@ -184,23 +144,23 @@ class Database:
         Returns:
             A list of target paths (or source paths, if reverse is True.)
         """
-        rel = self.relative_path(source)
+        rel = self.app.relative_path(source)
         if reverse:
-            results = self.cursor.execute("""
+            results = self.cursor.execute('''
                 SELECT s.path
                 FROM source_targets AS st
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE st.path = ?
-                """, (rel, ))
-            return [self.source_path(result[0]) for result in results]
+                ''', (rel, ))
+            return [self.app.source_path(result[0]) for result in results]
         else:
-            results = self.cursor.execute("""
+            results = self.cursor.execute('''
                 SELECT st.path
                 FROM source_targets AS st
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE s.path = ?
-                """, (rel, ))
-            return [self.target_path(result[0]) for result in results]
+                ''', (rel, ))
+            return [self.app.target_path(result[0]) for result in results]
 
     def set_targets(self, source, values):
         """
@@ -210,8 +170,8 @@ class Database:
             source: Source path to set target paths for.
             values: List of target paths.
         """
-        rel = self.relative_path(source)
-        self.cursor.execute("""
+        rel = self.app.relative_path(source)
+        self.cursor.execute('''
             DELETE
             FROM source_targets
             WHERE id IN (
@@ -219,14 +179,13 @@ class Database:
                 FROM source_targets st
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE s.path = ?)
-            """, (rel, ))
-        sid = self.add_source(source)
-        self.cursor.executemany("""
+            ''', (rel, ))
+        sid = self.add(source)
+        self.cursor.executemany('''
             INSERT INTO source_targets
                 (source_id, path)
                 VALUES (?, ?)
-            """, ([(sid, self.relative_path(value)) for value in values]))
-        self.commit()
+            ''', ([(sid, self.app.relative_path(value)) for value in values]))
 
     def get_dependencies(self, source, reverse=False, recursive=False):
         """
@@ -248,26 +207,26 @@ class Database:
         """
         if recursive:
             return self._get_dependencies_recursive(source, reverse)
-        rel = self.relative_path(source)
+        rel = self.app.relative_path(source)
         if reverse:
-            results = self.cursor.execute("""
+            results = self.cursor.execute('''
                 SELECT s.path
                 FROM source_dependencies AS sd
                     INNER JOIN sources s ON s.id = sd.source_id
                     INNER JOIN sources d ON d.id = sd.dependency_id
                 WHERE d.path = ?
-                """, (rel, ))
+                ''', (rel, ))
         else:
-            results = self.cursor.execute("""
+            results = self.cursor.execute('''
                 SELECT d.path
                 FROM source_dependencies AS sd
                     INNER JOIN sources s ON s.id = sd.source_id
                     INNER JOIN sources d ON d.id = sd.dependency_id
                 WHERE s.path = ?
-                """, (rel, ))
-        return [self.source_path(result[0]) for result in results]
+                ''', (rel, ))
+        return [self.app.source_path(result[0]) for result in results]
 
-    def _get_dependencies_recursive(self, path, reverse, _parent_deps=set()):
+    def _get_dependencies_recursive(self, source, reverse, _parent_deps=set()):
         """
         Get a list of all dependencies for a file, cascading in dependencies of dependencies.
 
@@ -280,7 +239,7 @@ class Database:
         Returns:
             A list of source paths.
         """
-        dependencies = set(self.get_dependencies(path, reverse=reverse))
+        dependencies = set(self.get_dependencies(source, reverse=reverse))
         for dependency in list(dependencies):
             if dependency not in _parent_deps:
                 dependencies |= self._get_dependencies_recursive(dependency, reverse, _parent_deps=dependencies)
@@ -294,85 +253,11 @@ class Database:
             source: Source path to set dependency paths for.
             values: List of source dependency paths.
         """
-        rel = self.relative_path(source)
-        self.cursor.execute("""
-            DELETE
-            FROM source_dependencies
-            WHERE id IN (
-                SELECT sd.id
-                FROM source_dependencies sd
-                    INNER JOIN sources s ON s.id = sd.source_id
-                    INNER JOIN sources d ON d.id = sd.dependency_id
-                WHERE s.path = ?)
-            """, (rel, ))
-        sid = self.add_source(source)
-        value_ids = [self.add_source(value) for value in values]
-        self.cursor.executemany("""
+        sid = self.add(source)
+        self.cursor.execute('DELETE FROM source_dependencies WHERE source_id = ?', (sid, ))
+        value_ids = [self.add(value) for value in values]
+        self.cursor.executemany('''
             INSERT INTO source_dependencies
                 (source_id, dependency_id)
                 VALUES (?, ?)
-            """, [(sid, value_id) for value_id in value_ids])
-        self.commit()
-
-    def source_path(self, relative):
-        """
-        Get a source path given a relative path.
-
-        Args:
-            relative: Relative path.
-
-        Returns:
-            A source path.
-        """
-        return os.path.join(self.app.source_root, relative)
-
-    def target_path(self, relative):
-        """
-        Get a target path given a relative path.
-
-        Args:
-            relative: Relative path.
-
-        Returns:
-            A target path.
-        """
-        return os.path.join(self.app.build_root, relative)
-
-    def relative_path(self, path):
-        """
-        Get a relative path from a source or target path.
-
-        Args:
-            path: Source or target path.
-
-        Returns:
-            A relative path.
-        """
-        if path.startswith(self.app.source_root):
-            path = os.path.relpath(path, self.app.source_root)
-        elif path.startswith(self.app.build_root):
-            path = os.path.relpath(path, self.app.build_root)
-        path = '' if path == '.' else path
-        return path
-
-    def path_regex(self, path, subdirs=False):
-        """
-        Get a regex for the given directory path. Used for retrieving file paths in or under the given directory.
-
-        Args:
-            path: Directory path.
-            subdirs: Retrieve files in all subdirectories.
-
-        Returns:
-            A regex string.
-        """
-        rel = self.relative_path(path)
-        if subdirs:
-            match = '.*'
-        else:
-            match = '[^{0}]*'.format(os.sep)
-        if rel == '':
-            regex = '^({0})$'.format(match)
-        else:
-            regex = '^{0}{1}({2})$'.format(rel, os.sep, match)
-        return regex.replace('\\', '\\\\')
+            ''', [(sid, value_id) for value_id in value_ids])

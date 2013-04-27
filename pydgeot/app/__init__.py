@@ -4,8 +4,10 @@ import logging
 import json
 import importlib
 import pkgutil
+import sqlite3
 from pydgeot import processors, commands
-from pydgeot.database import Database
+from pydgeot.app.sources import Sources
+from pydgeot.app.contexts import Contexts
 
 
 class InvalidAppRoot(Exception):
@@ -14,6 +16,15 @@ class InvalidAppRoot(Exception):
 
 class AppError(Exception):
     pass
+
+
+def _db_regex_func(expr, item):
+    """
+    REGEXP function for SQLite. Return true if a match is found.
+    """
+    import re
+    reg = re.compile(expr, re.I)
+    return reg.search(item) is not None
 
 
 class App:
@@ -65,14 +76,14 @@ class App:
             file_handler.setFormatter(formatter)
             self.log.addHandler(file_handler)
 
-            # Init database
-            self.db = Database(self, os.path.join(self.store_root, 'pydgeot.db'))
-
             # Get settings
             try:
                 self.settings = json.load(open(self.config_path))
             except ValueError as e:
                 raise AppError('Could not load config: \'{0}\''.format(e))
+
+            # Init database
+            self._init_database()
 
             # Add processor builtins to syspath
             pkg = pkgutil.get_loader('pydgeot.processors.builtins')
@@ -95,6 +106,14 @@ class App:
 
             # Sort processors by priority
             self._processors = sorted(self._processors, key=lambda p: p.priority, reverse=True)
+
+    def _init_database(self):
+        self.db_path = os.path.join(self.store_root, 'pydgeot.db')
+        self.db_connection = sqlite3.connect(self.db_path)
+        self.db_cursor = self.db_connection.cursor()
+        self.db_connection.create_function('REGEXP', 2, _db_regex_func)
+        self.sources = Sources(self)
+        self.contexts = Contexts(self)
 
     @classmethod
     def create(cls, path):
@@ -130,7 +149,8 @@ class App:
                     os.remove(os.path.join(root, name))
                 for name in dirs:
                     os.rmdir(os.path.join(root, name))
-        self.db.reset()
+        os.unlink(self.db_path)
+        self._init_database()
 
     def clean(self, paths=None):
         """
@@ -147,10 +167,12 @@ class App:
                 for root, dirs, files in os.walk(path, topdown=False, followlinks=False):
                     sources = [os.path.join(root, file) for file in files]
                     for source in sources:
-                        self.process_delete(source)
+                        self.processor_delete(source)
         for processor in self._processors:
-            processor.process_changes_complete()
-        self.filemap.clean(paths)
+            processor.generation_complete()
+        self.contexts.clean(paths)
+        self.sources.clean(paths)
+        self.db_connection.commit()
 
     def get_processor(self, path):
         """
@@ -167,7 +189,7 @@ class App:
                 return processor
         return None
 
-    def _processor_call(self, name, path, default=None):
+    def _processor_call(self, name, path, default=None, log_call=None):
         """
         Helper method to call a function on a paths appropriate file processor.
 
@@ -185,6 +207,12 @@ class App:
         if processor is not None and hasattr(processor, name):
             try:
                 value = getattr(processor, name)(path)
+
+                if log_call is not None:
+                    rel = self.relative_path(path)
+                    proc_name = processor.__class__.__name__
+                    self.log.info('Processed \'%s\' %s with %s', rel, name, proc_name)
+
                 return processor, value
             except Exception:
                 rel = os.path.relpath(path, self.source_root)
@@ -192,73 +220,40 @@ class App:
                 self.log.exception('Exception occurred processing \'%s\' %s with %s', rel, name, proc_name)
         return None, default
 
-    def _processor_process_call(self, name, path):
+    def processor_prepare(self, path):
         """
-        Helper method to call and log a process function on a paths appropriate file processor.
+        Process a prepare event for the given path.
 
         Args:
             path: File path to process.
-            name: Name of the function to call.
-
-        Returns:
-            The return value of the processor method to be called.
         """
-        rel = os.path.relpath(path, self.source_root)
-        processor, value = self._processor_call('process_' + name, path)
-        if processor is not None:
-            proc_name = processor.__class__.__name__
-            self.log.info('Processed \'%s\' %s with %s', rel, name, proc_name)
-            return value
-        return None
+        self._processor_call('prepare', path)
 
-    def process_create(self, path):
+    def processor_generate(self, path):
         """
-        Process a create event for the given path.
+        Process a generate event for the given path.
 
         Args:
             path: File path to process.
-
-        Returns:
-            A list of files generated for the path, or None if no processor could be found.
         """
-        return self._processor_process_call('create', path)
 
-    def process_update(self, path):
-        """
-        Process an update event for the given path.
+        self._processor_call('generate', path, log_call='generate')
 
-        Args:
-            path: File path to process.
-
-        Returns:
-            A list of files generated for the path, or None if no processor could be found.
-        """
-        return self._processor_process_call('update', path)
-
-    def process_delete(self, path):
+    def processor_delete(self, path):
         """
         Process a delete event for the given path.
 
         Args:
             path: File path to process.
-
-        Returns:
-            None
         """
-        return self._processor_process_call('delete', path)
+        return self._processor_call('delete', path, log_call='delete')
 
-    def process_get_dependencies(self, path):
+    def processor_generation_complete(self):
         """
-        Get a list of files the given path depends on.
-
-        Args:
-            source: Path to get dependency paths for.
-
-        Returns:
-            A list of paths.
+        Process the changes complete event for all processors.
         """
-        processor, value = self._processor_call('get_dependencies', path, default=[])
-        return value
+        for processor in self._processors:
+            processor.generation_complete()
 
     def run_command(self, name, *args):
         """
@@ -287,3 +282,74 @@ class App:
             else:
                 raise commands.CommandError('Incorrect number of arguments passed to command \'{0}\''.format(name))
         raise commands.CommandError('Command \'{0}\' does not exist'.format(name))
+
+    def source_path(self, path):
+        """
+        Get a source path from a build or relative path.
+
+        Args:
+            relative: Relative path.
+
+        Returns:
+            A source path.
+        """
+        if path.startswith(self.source_root):
+            return path
+        elif path.startswith(self.build_root):
+            path = os.path.relpath(path, self.build_root)
+        return os.path.join(self.source_root, path)
+
+    def target_path(self, path):
+        """
+        Get a target path from a source or relative path.
+
+        Args:
+            relative: Relative path.
+
+        Returns:
+            A target path.
+        """
+        if path.startswith(self.source_root):
+            path = os.path.relpath(path, self.source_root)
+        elif path.startswith(self.build_root):
+            return path
+        return os.path.join(self.build_root, path)
+
+    def relative_path(self, path):
+        """
+        Get a relative path from a source or target path.
+
+        Args:
+            path: Source or target path.
+
+        Returns:
+            A relative path.
+        """
+        if path.startswith(self.source_root):
+            path = os.path.relpath(path, self.source_root)
+        elif path.startswith(self.build_root):
+            path = os.path.relpath(path, self.build_root)
+        path = '' if path == '.' else path
+        return path
+
+    def path_regex(self, path, subdirs=False):
+        """
+        Get a regex for the given directory path. Used for retrieving file paths in or under the given directory.
+
+        Args:
+            path: Directory path.
+            subdirs: Retrieve files in all subdirectories.
+
+        Returns:
+            A regex string.
+        """
+        rel = self.relative_path(path)
+        if subdirs:
+            match = '.*'
+        else:
+            match = '[^{0}]*'.format(os.sep)
+        if rel == '':
+            regex = '^({0})$'.format(match)
+        else:
+            regex = '^{0}{1}({2})$'.format(rel, os.sep, match)
+        return regex.replace('\\', '\\\\')

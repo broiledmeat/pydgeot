@@ -12,38 +12,35 @@ class JinjaProcessor(Processor):
 
     def __init__(self, app):
         super().__init__(app)
-        self.envs = {}
+        self.env = jinja2.Environment(loader=jinja2.FileSystemLoader(self.app.source_root))
+        self.changes = {}
 
     def can_process(self, path):
         return path.endswith('.html')
 
-    def process_update(self, path):
-        fields = self._get_template_fields(path)
-        if 'template_only' in fields and fields['template_only'] != 'true':
-            env = self._get_env(self.app.source_root)
-            content = open(path).read()
-            template = env.from_string(content)
-            rel = os.path.relpath(path, self.app.source_root)
-            target = os.path.join(self.app.build_root, rel)
-            os.makedirs(os.path.dirname(target), exist_ok=True)
-            f = open(target, 'w', encoding='utf-8')
-            f.write(template.render())
-            f.close()
-            return [target]
-        return []
+    def prepare(self, path):
+        target = self.app.target_path(path)
+        body = self.env.parse(open(path).read()).body
 
-    def get_dependencies(self, path):
-        body = self._get_env(self.app.source_root).parse(open(path).read()).body
-        return self._find_deps(self.app.source_root, body)
+        self.changes[path] = (target, body)
+        self.app.sources.set_targets(path, [target])
+        self.app.sources.set_dependencies(path, self._find_deps(body))
 
-    def _get_env(self, root):
-        if root not in self.envs:
-            self.envs[root] = jinja2.Environment(loader=jinja2.FileSystemLoader(root))
-        return self.envs[root]
+    def generate(self, path):
+        if path in self.changes:
+            target, body = self.changes[path]
+            fields = self._get_template_fields(body)
+            if 'template_only' not in fields or fields['template_only'] != 'true':
+                # TODO: Get template from body
+                template = self.env.from_string(path)
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                f = open(target, 'w', encoding='utf-8')
+                f.write(template.render())
+                f.close()
+            del self.changes[path]
 
-    def _get_template_fields(self, path):
+    def _get_template_fields(self, body):
         fields = dict((name, val[1]) for name, val in self.TEMPLATE_FIELDS.items())
-        body = self._get_env(self.app.source_root).parse(open(path).read()).body
         parts = [(p.target.name.lower(), p.node) for p in body
                  if isinstance(p, jinja2.nodes.Assign) and p.target.name.lower() in fields]
         for name, node in parts:
@@ -60,11 +57,11 @@ class JinjaProcessor(Processor):
             value = str(node.value)
         return value
 
-    def _find_deps(self, root, body):
+    def _find_deps(self, body):
         deps = set()
         for part in body:
             if isinstance(part, (jinja2.nodes.Extends, jinja2.nodes.Include)):
-                deps.add(os.path.join(root, part.template.value))
+                deps.add(os.path.join(self.app.source_root, part.template.value))
             elif isinstance(part, jinja2.nodes.Block):
-                deps |= self._find_deps(root, part.body)
+                deps |= self._find_deps(part.body)
         return deps

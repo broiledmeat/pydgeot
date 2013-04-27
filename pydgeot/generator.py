@@ -6,8 +6,7 @@ class ChangeSet:
     Contains a set of file changes.
     """
     def __init__(self):
-        self.create = set()
-        self.update = set()
+        self.generate = set()
         self.delete = set()
 
     def merge(self, other):
@@ -17,8 +16,7 @@ class ChangeSet:
         Args:
             other: ChangeSet to merge changes from.
         """
-        self.create |= other.create
-        self.update |= other.update
+        self.generate |= other.generate
         self.delete |= other.delete
 
 
@@ -51,26 +49,32 @@ class Generator:
         """
         for path in changes.delete:
             self.app.process_delete(path)
-            self.app.db.remove_source(path)
 
-        # Update dependencies for new or updated files
-        for path in list(changes.create | changes.update):
-            dependencies = self.app.process_get_dependencies(path)
-            self.app.db.set_dependencies(path, dependencies)
-            changes.update |= self.app.db.get_dependencies(path, reverse=True, recursive=True)
+        # Prepare new or updated files to set targets and dependencies. Add those dependencies to another ChangeSet to
+        # be prepared.
+        dep_changes = ChangeSet()
+        for path in changes.generate:
+            self.app.processor_prepare(path)
+            dep_changes.generate |= self.app.sources.get_dependencies(path, reverse=True, recursive=True)
+            dep_changes.generate |= self.app.contexts.get_dependencies(path, reverse=True, sources=True, recursive=True)
 
-        for path in changes.create | changes.update:
-            proc_func = self.app.process_create if path in changes.create else self.app.process_update
-            targets = proc_func(path)
-            if targets is not None:
-                self.app.db.set_targets(path, targets)
+        # Prepare source files that are in the dependency ChangeSet, but not the original.
+        for path in (changes.generate - dep_changes.generate):
+            self.app.processor_prepare(path)
 
-        for processor in self.app._processors:
-            processor.process_changes_complete()
+        # Generate everything
+        for path in (changes.generate | dep_changes.generate):
+            self.app.processor_generate(path)
+
+        # Finish generation
+        self.app.processor_generation_complete()
+
+        # Commit database changes
+        self.app.db_connection.commit()
 
     def collect_changes(self, root=None):
         """
-        Find new, updated, or deleted files in a directory.
+        Find updated or deleted files in a directory.
 
         Args:
             root: Directory path to look for changes in.
@@ -84,8 +88,8 @@ class Generator:
 
         dirs = set()
 
-        old_sources = self.app.db.get_sources(root, mtimes=True)
-        current_sources = []
+        old_sources = dict(self.app.sources.get(root, mtimes=True))
+        current_sources = {}
         if os.path.isdir(root):
             for filename in os.listdir(root):
                 path = os.path.join(root, filename)
@@ -93,21 +97,14 @@ class Generator:
                 if os.path.isdir(path):
                     dirs.add(path)
                 else:
-                    current_sources.append((path, stat.st_mtime))
+                    current_sources[path] = stat.st_mtime
 
-        for path, mtime in current_sources:
-            found_old = False
-            for old_path, old_mtime in old_sources:
-                if path == old_path:
-                    if abs(mtime - old_mtime) > 0.001:
-                        changes.update.add(path)
-                    found_old = True
-                    break
-            if not found_old:
-                changes.create.add(path)
+        for path, mtime in current_sources.items():
+            if path not in old_sources or (mtime - old_sources[path]) > 0.001:
+                changes.generate.add(path)
 
-        for old_path, old_mtime in old_sources:
-            if not any((old_path == path for path, mtime in current_sources)):
+        for old_path, old_mtime in old_sources.items():
+            if old_path not in current_sources:
                 changes.delete.add(old_path)
 
         for path in dirs:

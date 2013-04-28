@@ -93,7 +93,7 @@ class Contexts:
             source: Source path of the context var.
         """
         self.remove(name, source)
-        self.add(name, value, source)
+        self.add(source, name, value)
 
     def add(self, source, name, value):
         """

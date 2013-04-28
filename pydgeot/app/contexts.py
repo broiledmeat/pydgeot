@@ -92,7 +92,7 @@ class Contexts:
             value: Value of the context var.
             source: Source path of the context var.
         """
-        self.remove(name, source)
+        self.remove(source, name)
         self.add(source, name, value)
 
     def add(self, source, name, value):
@@ -111,7 +111,7 @@ class Contexts:
                 VALUES (?, ?, ?)
                 ''', (name, value, sid))
 
-    def remove(self, name=None, source=None):
+    def remove(self, source=None, name=None):
         """
         Remove context vars with a given name and/or source path. The name and source arguments are both optional, but
         at least one must be given.
@@ -127,20 +127,9 @@ class Contexts:
             if result is not None:
                 sid = result[0]
                 if name is None:
-                    self.cursor.execute('''
-                        DELETE
-                        FROM context_vars
-                        WHERE
-                            source_id = ?
-                        ''', (sid, ))
+                    self.cursor.execute('DELETE FROM context_vars WHERE source_id = ?', (sid, ))
                 else:
-                    self.cursor.execute('''
-                        DELETE
-                        FROM context_vars
-                        WHERE
-                            name = ? AND
-                            source_id = ?
-                        ''', (name, sid))
+                    self.cursor.execute('DELETE FROM context_vars WHERE name = ? AND source_id = ?', (name, sid))
         elif name is not None:
             self.cursor.execute('DELETE FROM context_vars WHERE name = ?', (name, ))
 

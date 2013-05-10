@@ -54,6 +54,8 @@ class Generator:
         # be prepared.
         dep_changes = ChangeSet()
         for path in changes.generate:
+            # Grab any context var dependencies before preparing, in case any context vars had been removed.
+            dep_changes.generate |= self.app.contexts.get_dependencies(path, reverse=True, sources=True, recursive=True)
             self.app.processor_prepare(path)
             dep_changes.generate |= self.app.sources.get_dependencies(path, reverse=True, recursive=True)
             dep_changes.generate |= self.app.contexts.get_dependencies(path, reverse=True, sources=True, recursive=True)

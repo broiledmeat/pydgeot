@@ -6,4 +6,4 @@ def list_commands(app):
         disp = command.name
         if command.help_args != '':
             disp += ' ' + command.help_args
-        print('{0}\t{1}'.format(disp.rjust(left_align), command.help))
+        print('{0}\t{1}'.format(disp.rjust(left_align), command.help_msg))

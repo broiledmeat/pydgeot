@@ -214,10 +214,10 @@ class App:
                     self.log.info('Processed \'%s\' %s with %s', rel, name, proc_name)
 
                 return processor, value
-            except Exception:
+            except Exception as e:
                 rel = os.path.relpath(path, self.source_root)
                 proc_name = processor.__class__.__name__
-                self.log.exception('Exception occurred processing \'%s\' %s with %s', rel, name, proc_name)
+                self.log.exception('Exception occurred processing \'%s\' %s with %s: %s', rel, name, proc_name, str(e))
         return None, default
 
     def processor_prepare(self, path):
@@ -332,7 +332,7 @@ class App:
         path = '' if path == '.' else path
         return path
 
-    def path_regex(self, path, subdirs=False):
+    def path_regex(self, path, recursive=False):
         """
         Get a regex for the given directory path. Used for retrieving file paths in or under the given directory.
 
@@ -344,7 +344,7 @@ class App:
             A regex string.
         """
         rel = self.relative_path(path)
-        if subdirs:
+        if recursive:
             match = '.*'
         else:
             match = '[^{0}]*'.format(os.sep)

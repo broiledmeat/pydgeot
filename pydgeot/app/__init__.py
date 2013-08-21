@@ -56,7 +56,8 @@ class App:
 
         # Import builtin commands
         importlib.import_module('pydgeot.commands.builtins')
-        self._commands.update(commands.available['builtins'])
+        for builtin_commands in commands.available.values():
+            self._commands.update(builtin_commands)
 
         self.log = logging.getLogger('app')
         self.log.setLevel(logging.DEBUG)

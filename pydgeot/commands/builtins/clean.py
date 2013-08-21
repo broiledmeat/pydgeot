@@ -1,3 +1,7 @@
+from pydgeot.commands import register
+
+
+@register(help_args='PATH [PATH]...', help_msg='Clean built content for specific directories')
 def clean(app, *args):
     import os
     from pydgeot.commands import CommandError

@@ -1,3 +1,7 @@
+from pydgeot.commands import register
+
+
+@register(help_msg='Continuously build static content')
 def watch(app, *args):
     import os
     import types

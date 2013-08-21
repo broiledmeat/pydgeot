@@ -1,3 +1,7 @@
+from pydgeot.commands import register
+
+
+@register(help_args='PATH', help_msg='Generate a new Pydgeot app directory')
 def create(app, path):
     import os
     from pydgeot.commands import CommandError

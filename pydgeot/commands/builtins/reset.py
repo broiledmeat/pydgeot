@@ -1,3 +1,7 @@
+from pydgeot.commands import register
+
+
+@register(help_msg='Quickly clean all built content')
 def reset(app, *args):
     from pydgeot.commands import CommandError
 

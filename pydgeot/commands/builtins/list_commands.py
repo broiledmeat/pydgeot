@@ -1,3 +1,7 @@
+from pydgeot.commands import register
+
+
+@register(name='commands', help_msg='List available commands')
 def list_commands(app):
     commands = sorted(app._commands.values(), key=lambda x: x.name)
     left_align = max(14, max([len(c.name) + len(c.help_args) for c in commands])) + 4

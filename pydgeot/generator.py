@@ -74,7 +74,7 @@ class Generator:
                                 for s in self.app.sources.get_dependencies(c, reverse=True, recursive=True)])
 
             # Add source and context dependencies to the changeset.
-            changes.generate |= source_deps | context_deps
+            dep_changes.generate |= source_deps | context_deps
 
         # Prepare dependent changes that weren't in the original changes list
         for path in (dep_changes.generate - changes.generate):

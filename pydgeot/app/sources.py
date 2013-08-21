@@ -1,4 +1,13 @@
 import os
+import datetime
+from collections import namedtuple
+
+
+class SourceResult(namedtuple('SourceResult', ['path', 'size', 'modified'])):
+    """
+    Named Tuple containing a sources path, size, and modified time.
+    """
+    pass
 
 
 class Sources:
@@ -38,6 +47,12 @@ class Sources:
                     ON UPDATE CASCADE)
             ''')
 
+    def _SourceResult(self, *row):
+        return SourceResult(self.app.source_path(row[0]), row[1], datetime.datetime.fromtimestamp(row[2]))
+
+    def _TargetResult(self, *row):
+        return SourceResult(self.app.target_path(row[0]), None, None)
+
     def clean(self, paths):
         """
         Delete entries under the given source directories and their subdirectories.
@@ -60,7 +75,7 @@ class Sources:
                 self.cursor.execute('DELETE FROM source_targets WHERE source_id IN {0}'.format(id_query), ids)
                 self.cursor.execute('DELETE FROM sources WHERE id IN {0}'.format(id_query), ids)
 
-    def add(self, source):
+    def add_source(self, source):
         """
         Add a source entry to the database. Updates file information if the entry already exists.
 
@@ -94,29 +109,36 @@ class Sources:
 
         return self.cursor.lastrowid
 
-    def get(self, prefix=None, mtimes=False):
+    def get_source(self, source):
         """
-        Get a list of source paths.
+        Get a SourceResult for the given path.
 
         Args:
-            prefix: Source directory to get files in. Not recursive.
-            mtimes: Return modified times for files as well.
+            source: Source file path.
 
         Returns:
-            A list of source file paths. If mtimes is True, a list of tuples containing the source file path and its
-            modified time, will be returned.
+            A SourceResult for the given path, or None if the path does not exist.
         """
-        if prefix is None:
-            results = self.cursor.execute('SELECT path, modified FROM sources')
-        else:
-            regex = self.app.path_regex(prefix)
-            results = self.cursor.execute('SELECT path, modified FROM sources WHERE path REGEXP ?', (regex, ))
-        if mtimes:
-            return [(self.app.source_path(result[0]), result[1]) for result in results]
-        else:
-            return [self.app.source_path(result[0]) for result in results]
+        rel = self.app.relative_path(source)
+        results = list(self.cursor.execute('SELECT path, size, modified FROM sources WHERE path = ?', (rel, )))
+        return self._SourceResult(*results[0]) if len(results) > 0 else None
 
-    def remove(self, source):
+    def get_sources(self, source_dir='', recursive=True):
+        """
+        Get a list SourceResults for sources in the given directory.
+
+        Args:
+            source_dir: Source directory to get files for.
+            recursive: Return results in subdirectories of source_dir.
+
+        Returns:
+            A list of SourceResults, or an empty list if no sources could be found.
+        """
+        regex = self.app.path_regex(source_dir, recursive)
+        results = self.cursor.execute('SELECT path, size, modified FROM sources WHERE path REGEXP ?', (regex, ))
+        return set([self._SourceResult(*result) for result in results])
+
+    def remove_source(self, source):
         """
         Remove a source entry, and any associated source dependencies and target files.
 
@@ -142,17 +164,18 @@ class Sources:
                      argument should be given a target path.
 
         Returns:
-            A list of target paths (or source paths, if reverse is True.)
+            A list of SourceResults for target paths (where size and modified time will be None), or if reverse is True,
+            a list of SourceResults for source paths.
         """
         rel = self.app.relative_path(source)
         if reverse:
             results = self.cursor.execute('''
-                SELECT s.path
+                SELECT s.path, s.size, s.modified
                 FROM source_targets AS st
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE st.path = ?
                 ''', (rel, ))
-            return [self.app.source_path(result[0]) for result in results]
+            return set([self._SourceResult(*result) for result in results])
         else:
             results = self.cursor.execute('''
                 SELECT st.path
@@ -160,7 +183,7 @@ class Sources:
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE s.path = ?
                 ''', (rel, ))
-            return [self.app.target_path(result[0]) for result in results]
+            return set([self._TargetResult(*result) for result in results])
 
     def set_targets(self, source, values):
         """
@@ -180,7 +203,7 @@ class Sources:
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE s.path = ?)
             ''', (rel, ))
-        sid = self.add(source)
+        sid = self.add_source(source)
         self.cursor.executemany('''
             INSERT INTO source_targets
                 (source_id, path)
@@ -210,7 +233,7 @@ class Sources:
         rel = self.app.relative_path(source)
         if reverse:
             results = self.cursor.execute('''
-                SELECT s.path
+                SELECT s.path, s.size, s.modified
                 FROM source_dependencies AS sd
                     INNER JOIN sources s ON s.id = sd.source_id
                     INNER JOIN sources d ON d.id = sd.dependency_id
@@ -218,13 +241,13 @@ class Sources:
                 ''', (rel, ))
         else:
             results = self.cursor.execute('''
-                SELECT d.path
+                SELECT d.path, d.size, d.modified
                 FROM source_dependencies AS sd
                     INNER JOIN sources s ON s.id = sd.source_id
                     INNER JOIN sources d ON d.id = sd.dependency_id
                 WHERE s.path = ?
                 ''', (rel, ))
-        return [self.app.source_path(result[0]) for result in results]
+        return set([self._SourceResult(*result) for result in results])
 
     def _get_dependencies_recursive(self, source, reverse, _parent_deps=set()):
         """
@@ -239,10 +262,10 @@ class Sources:
         Returns:
             A list of source paths.
         """
-        dependencies = set(self.get_dependencies(source, reverse=reverse))
+        dependencies = self.get_dependencies(source, reverse=reverse)
         for dependency in list(dependencies):
             if dependency not in _parent_deps:
-                dependencies |= self._get_dependencies_recursive(dependency, reverse, _parent_deps=dependencies)
+                dependencies |= self._get_dependencies_recursive(dependency.path, reverse, _parent_deps=dependencies)
         return dependencies
 
     def set_dependencies(self, source, values):
@@ -253,9 +276,9 @@ class Sources:
             source: Source path to set dependency paths for.
             values: List of source dependency paths.
         """
-        sid = self.add(source)
+        sid = self.add_source(source)
         self.cursor.execute('DELETE FROM source_dependencies WHERE source_id = ?', (sid, ))
-        value_ids = [self.add(value) for value in values]
+        value_ids = [self.add_source(value) for value in values]
         self.cursor.executemany('''
             INSERT INTO source_dependencies
                 (source_id, dependency_id)

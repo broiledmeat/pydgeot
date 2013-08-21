@@ -1,67 +1,129 @@
 import os
 import jinja2
+import jinja2.meta
+import jinja2.nodes
+from jinja2.ext import Extension
 from pydgeot.processors import register, Processor
+
+
+class SetContextExtension(Extension):
+    tags = {'setcontext'}
+
+    def parse(self, parser):
+        lineno = next(parser.stream).lineno
+        name = parser.stream.expect('name')
+
+        if parser.stream.current.type == 'assign':
+            next(parser.stream)
+            value = parser.parse_expression()
+            self.processor.add_set_context(name.value, value.value)
+            name_node = jinja2.nodes.Name(name.value, 'store', lineno=lineno)
+            value_node = jinja2.nodes.Const(value.value, lineno=lineno)
+            return jinja2.nodes.Assign(name_node, value_node, lineno=lineno)
+
+        return []
 
 
 @register()
 class JinjaProcessor(Processor):
-    TEMPLATE_FIELDS = {
-        'name': (str, None),
-        'template_only': (bool, False)
-    }
-
     def __init__(self, app):
         super().__init__(app)
-        self.env = jinja2.Environment(loader=jinja2.FileSystemLoader(self.app.source_root))
-        self.changes = {}
+
+        self._env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(self.app.source_root),
+            extensions=[SetContextExtension])
+
+        # Prepare template extensions
+        for extension in self._env.extensions.values():
+            extension.processor = self
+
+        # Add template functions
+        def get_contexts(name, value):
+            context_dicts = []
+            results = self.app.contexts.get_contexts(name, value)
+            for result in results:
+                context_dict = {'url': self.app.relative_path(result.source)}
+                source = self.app.sources.get_source(result.source)
+                if source is not None:
+                    context_dict['size'] = source.size
+                    context_dict['modified'] = source.modified
+                for context_var in self.app.contexts.get_contexts(source=result.source):
+                    context_dict[context_var.name] = context_var.value
+                context_dicts.append(context_dict)
+            return context_dicts
+        self._env.globals['get_contexts'] = get_contexts
+
+        self._generate = {}
 
     def can_process(self, path):
         return path.endswith('.html')
 
     def prepare(self, path):
-        target = self.app.target_path(path)
-        body = self.env.parse(open(path).read()).body
+        # TODO: Allow extension changing
+        if path not in self._generate:
+            self.current_path = path
+            self._set_contexts = {}
 
-        self.changes[path] = (target, body)
-        self.app.sources.set_targets(path, [target])
-        self.app.sources.set_dependencies(path, self._find_deps(body))
+            target = self.target_path(path)
+            ast = self._env.parse(open(path).read())
+
+            self.app.sources.set_targets(path, [target])
+            self.app.sources.set_dependencies(path,
+                                              [self.app.source_path(t)
+                                               for t in jinja2.meta.find_referenced_templates(ast)])
+
+            consts = self._get_const_vars(ast)
+            template_only = consts.get('template_only', False)
+
+            # Clear old context dependencies and add new ones (populated from get_contexts)
+            self.app.contexts.clear_dependencies(path)
+            for name, value in self._get_context_requests(ast):
+                self.app.contexts.add_dependency(path, name, value)
+
+            # Clear old contexts and add new ones (populated from SetContextExtension when the template is parsed)
+            self.app.contexts.remove_context(path)
+            for name, value in self._set_contexts.items():
+                self.app.contexts.set_context(path, name, value)
+
+            # Add this to the list of paths to be generated if it's not template only
+            if not template_only:
+                self._generate[path] = (target, ast)
 
     def generate(self, path):
-        if path in self.changes:
-            target, body = self.changes[path]
-            fields = self._get_template_fields(body)
-            if 'template_only' not in fields or fields['template_only'] != 'true':
-                # TODO: Get template from body
-                template = self.env.from_string(path)
-                os.makedirs(os.path.dirname(target), exist_ok=True)
-                f = open(target, 'w', encoding='utf-8')
-                f.write(template.render())
-                f.close()
-            del self.changes[path]
+        if path in self._generate:
+            target, ast = self._generate[path]
+            # TODO: Get template from ast returned above
+            template = self._env.from_string(open(path).read())
 
-    def _get_template_fields(self, body):
-        fields = dict((name, val[1]) for name, val in self.TEMPLATE_FIELDS.items())
-        parts = [(p.target.name.lower(), p.node) for p in body
-                 if isinstance(p, jinja2.nodes.Assign) and p.target.name.lower() in fields]
-        for name, node in parts:
-            fields[name] = self._get_template_field_value(node, self.TEMPLATE_FIELDS[name][0])
-        return fields
+            template_vars = {'url': self.app.relative_path(path)}
+            source = self.app.sources.get_source(path)
+            if source is not None:
+                template_vars['size'] = source.size
+                template_vars['modified'] = source.modified
 
-    def _get_template_field_value(self, node, value_type=str):
-        if isinstance(node, jinja2.nodes.List):
-            values = dict(node.iter_fields())['items']
-            value = [self._get_template_field_value(v, value_type) for v in values]
-        elif value_type is bool:
-            value = isinstance(node.value, bool) and node.value
-        else:
-            value = str(node.value)
-        return value
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            f = open(target, 'w', encoding='utf-8')
+            f.write(template.render(**template_vars))
+            f.close()
+            del self._generate[path]
 
-    def _find_deps(self, body):
-        deps = set()
-        for part in body:
-            if isinstance(part, (jinja2.nodes.Extends, jinja2.nodes.Include)):
-                deps.add(os.path.join(self.app.source_root, part.template.value))
-            elif isinstance(part, jinja2.nodes.Block):
-                deps |= self._find_deps(part.body)
-        return deps
+    def target_path(self, path):
+        return self.app.target_path(path)
+
+    def add_set_context(self, name, value):
+        self._set_contexts[name] = value
+
+    def _get_const_vars(self, ast):
+        const_vars = {}
+        for node in ast.find_all((jinja2.nodes.Assign, )):
+            if isinstance(node.target, jinja2.nodes.Name) and isinstance(node.node, jinja2.nodes.Const):
+                const_vars[node.target.name] = node.node.value
+        return const_vars
+
+    def _get_context_requests(self, ast):
+        context_requests = []
+        for node in ast.find_all(jinja2.nodes.Call, ):
+            if isinstance(node.node, jinja2.nodes.Name) and len(node.args) == 2 and \
+                    isinstance(node.args[0], jinja2.nodes.Const) and isinstance(node.args[1], jinja2.nodes.Const):
+                context_requests.append((node.args[0].value, node.args[1].value))
+        return context_requests

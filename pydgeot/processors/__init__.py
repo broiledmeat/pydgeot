@@ -55,7 +55,7 @@ class Processor:
         Args:
             path: File path to process.
         """
-        for target in self.app.sources.get_targets(path):
+        for target in [t.path for t in self.app.sources.get_targets(path)]:
             if os.path.isfile(target):
                 try:
                     os.remove(target)
@@ -64,8 +64,8 @@ class Processor:
                         os.rmdir(root)
                 except PermissionError:
                     pass
-        self.app.contexts.remove(source=path)
-        self.app.sources.remove(path)
+        self.app.contexts.remove_context(source=path)
+        self.app.sources.remove_source(path)
 
     def generation_complete(self):
         """

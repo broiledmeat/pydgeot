@@ -1,4 +1,5 @@
 import os
+import datetime
 
 
 class ChangeSet:
@@ -33,7 +34,7 @@ class Generator:
 
     def generate(self):
         """
-        Build content for the App's root content directory.
+        Build content for the Apps root content directory.
         """
         if not os.path.isdir(self.app.build_root):
             os.makedirs(self.app.build_root)
@@ -48,20 +49,35 @@ class Generator:
             changes: ChangeSet to build content for.
         """
         for path in changes.delete:
-            self.app.process_delete(path)
+            self.app.processor_delete(path)
 
         # Prepare new or updated files to set targets and dependencies. Add those dependencies to another ChangeSet to
         # be prepared.
         dep_changes = ChangeSet()
-        for path in changes.generate:
-            # Grab any context var dependencies before preparing, in case any context vars had been removed.
-            dep_changes.generate |= self.app.contexts.get_dependencies(path, reverse=True, sources=True, recursive=True)
-            self.app.processor_prepare(path)
-            dep_changes.generate |= self.app.sources.get_dependencies(path, reverse=True, recursive=True)
-            dep_changes.generate |= self.app.contexts.get_dependencies(path, reverse=True, sources=True, recursive=True)
+        for path in list(changes.generate):
+            # Grab dependencies before preparing, in case any context vars had been removed.
+            source_deps = set([s.path for s in self.app.sources.get_dependencies(path, reverse=True, recursive=True)])
+            context_deps = set([c.source for c in
+                                self.app.contexts.get_dependencies(path, reverse=True, recursive=True)])
 
-        # Prepare source files that are in the dependency ChangeSet, but not the original.
-        for path in (changes.generate - dep_changes.generate):
+            # Prepare the source to refresh any new dependencies
+            self.app.processor_prepare(path)
+
+            # Add any files the source is dependent on or depends on it
+            source_deps |= set([s.path for s in self.app.sources.get_dependencies(path, reverse=True, recursive=True)])
+            context_deps |= set([c.source for c in
+                                 self.app.contexts.get_dependencies(path, reverse=True, recursive=True)])
+
+            # Get source dependencies for context dependency sources.
+            source_deps |= set([s.path
+                                for c in context_deps
+                                for s in self.app.sources.get_dependencies(c, reverse=True, recursive=True)])
+
+            # Add source and context dependencies to the changeset.
+            changes.generate |= source_deps | context_deps
+
+        # Prepare dependent changes that weren't in the original changes list
+        for path in (dep_changes.generate - changes.generate):
             self.app.processor_prepare(path)
 
         # Generate everything
@@ -90,7 +106,7 @@ class Generator:
 
         dirs = set()
 
-        old_sources = dict(self.app.sources.get(root, mtimes=True))
+        old_sources = dict([(s.path, s.modified) for s in self.app.sources.get_sources(root, recursive=False)])
         current_sources = {}
         if os.path.isdir(root):
             for filename in os.listdir(root):
@@ -99,10 +115,10 @@ class Generator:
                 if os.path.isdir(path):
                     dirs.add(path)
                 else:
-                    current_sources[path] = stat.st_mtime
+                    current_sources[path] = datetime.datetime.fromtimestamp(stat.st_mtime)
 
         for path, mtime in current_sources.items():
-            if path not in old_sources or (mtime - old_sources[path]) > 0.001:
+            if path not in old_sources or (mtime - old_sources[path]).total_seconds() > 1:
                 changes.generate.add(path)
 
         for old_path, old_mtime in old_sources.items():

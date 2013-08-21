@@ -1,3 +1,13 @@
+from collections import namedtuple
+
+
+class ContextResult(namedtuple('ContextResult', ['name', 'value', 'source'])):
+    """
+    Named Tuple containing a context vars name, value, and source path.
+    """
+    pass
+
+
 class Contexts:
     def __init__(self, app):
         self.app = app
@@ -18,7 +28,13 @@ class Contexts:
             CREATE TABLE IF NOT EXISTS context_var_dependencies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
+                value TEXT,
+                value_globbed INTEGER DEFAULT 0,
+                source_id INTEGER,
                 dependency_id INTEGER NOT NULL,
+                FOREIGN KEY(source_id) REFERENCES sources(id)
+                    ON DELETE CASCADE
+                    ON UPDATE CASCADE,
                 FOREIGN KEY(dependency_id) REFERENCES sources(id)
                     ON DELETE CASCADE
                     ON UPDATE CASCADE)
@@ -45,45 +61,59 @@ class Contexts:
                     '''.format(id_query), (ids + ids))
                 self.cursor.execute('DELETE FROM context_vars WHERE source_id IN {0}'.format(id_query), ids)
 
-    def get_first(self, name, source=None):
+    def get_context(self, name, value=None, source=None):
         """
         Get the first context var with a given name and optional source path.
 
         Args:
             name: Name of the context var to retrieve.
-            source: Source path that set the context var.
+            value: Value of the context vars to retrieve.
+            source: Source path that set the context vars.
         Returns:
-            String value of the context var, or None if no context var could be found.
+            A ContextResult for the context var, or None if no context var could be found.
         """
-        values = self.get(name, source)
+        values = self.get_contexts(name, value, source)
         return values[0] if len(values) > 0 else None
 
-    def get(self, name, source=None):
+    def get_contexts(self, name=None, value=None, source=None):
         """
         Get all context vars with a given name and optional source path.
 
         Args:
             name: Name of the context vars to retrieve.
+            value: Value of the context vars to retrieve.
             source: Source path that set the context vars.
         Returns:
-            A list of string values of the context vars, or an empty list if no context vars could be found.
+            A list of ContextResults for found context vars, or an empty list if no context vars could be found.
         """
-        results = []
-        if source is None and name is not None:
-            results = self.cursor.execute('SELECT c.value FROM context_vars AS c WHERE c.name = ?', (name, ))
-        elif source is not None:
-            rel = self.app.relative_path(source)
-            results = self.cursor.execute('''
-                SELECT c.value
+        if name is None and value is None and source is None:
+            return set()
+        query = '''
+                SELECT c.name, c.value, s.path
                 FROM context_vars AS c
                     INNER JOIN sources s ON s.id = c.source_id
                 WHERE
-                    c.name = ? AND
-                    s.path = ?
-                ''', (name, rel))
-        return [result[0] for result in results]
+                    1=1
+            '''
+        vars = []
+        if name is not None:
+            query += ' AND c.name = ?'
+            vars.append(name)
+        if value is not None:
+            if '*' in value or '?' in value:
+                query += ' AND c.value LIKE ?'
+                vars.append(value.replace('*', '%').replace('?', '_'))
+            else:
+                query += ' AND c.value = ?'
+                vars.append(value)
+        if source is not None:
+            rel = self.app.relative_path(source)
+            query += ' AND s.path = ?'
+            vars.append(rel)
+        results = self.cursor.execute(query, vars)
+        return set([ContextResult(result[0], result[1], self.app.source_path(result[2])) for result in results])
 
-    def set(self, source, name, value):
+    def set_context(self, source, name, value):
         """
         Set a context var for the source path. Removes any other context vars with the same name and source path.
 
@@ -92,10 +122,10 @@ class Contexts:
             value: Value of the context var.
             source: Source path of the context var.
         """
-        self.remove(source, name)
-        self.add(source, name, value)
+        self.remove_context(source, name)
+        self.add_context(source, name, value)
 
-    def add(self, source, name, value):
+    def add_context(self, source, name, value):
         """
         Add a context var for the source path. Allows multiple context vars with the same name and source path.
 
@@ -104,14 +134,14 @@ class Contexts:
             value: Value of the context var.
             source: Source path of the context var.
         """
-        sid = self.app.sources.add(source)
+        sid = self.app.sources.add_source(source)
         self.cursor.execute('''
             INSERT INTO context_vars
                 (name, value, source_id)
                 VALUES (?, ?, ?)
                 ''', (name, value, sid))
 
-    def remove(self, source=None, name=None):
+    def remove_context(self, source=None, name=None):
         """
         Remove context vars with a given name and/or source path. The name and source arguments are both optional, but
         at least one must be given.
@@ -133,79 +163,127 @@ class Contexts:
         elif name is not None:
             self.cursor.execute('DELETE FROM context_vars WHERE name = ?', (name, ))
 
-    def get_dependencies(self, source, reverse=False, sources=False, recursive=False):
-        rel = self.app.relative_path(source)
-        if sources:
-            if recursive:
-                return self._get_dependencies_recursive(source, reverse)
-            if reverse:
-                results = self.cursor.execute('''
-                    SELECT ds.path
-                    FROM context_vars AS dc
-                        INNER JOIN sources ds ON ds.id = dc.source_id
-                    WHERE
-                        dc.name IN (
-                            SELECT c.name
-                                FROM context_vars AS c
-                                    INNER JOIN sources s ON s.id = c.source_id
-                                WHERE
-                                    s.path = ?)
-                    ''', (rel, ))
-            else:
-                results = self.cursor.execute('''
-                    SELECT ds.path
-                    FROM context_vars AS dc
-                        INNER JOIN sources ds ON ds.id = dc.source_id
-                    WHERE
-                        dc.name IN (
-                            SELECT c.name
-                            FROM context_var_dependencies AS c
-                                INNER JOIN sources s ON s.id = c.source_id
-                            WHERE
-                                s.path = ?)
-                    ''', (rel, ))
-            return [self.app.source_path(result[0]) for result in results]
+    def get_dependencies(self, dependency, reverse=False, recursive=False):
+        """
+        Get all context var dependencies a source path depends on.
+
+        Args:
+            dependency: Source path to get dependencies for.
+            reverse: If true, get context vars that depend on the dependency source path.
+            recursive: Return the entire dependency tree.
+        Returns:
+            A list of ContextResults, or an empty list if no dependencies could be found.
+        """
+        rel = self.app.relative_path(dependency)
+        if recursive:
+            return self._get_dependencies_recursive(dependency, reverse)
+        if reverse:
+            # Get all the context vars source sets
+            results = self.cursor.execute('''
+                SELECT c.name, c.value
+                FROM context_vars AS c
+                    INNER JOIN sources s ON s.id = c.source_id
+                WHERE
+                    s.path = ?
+                ''', (rel, ))
+
+            query = '''
+                SELECT c.name, c.value, d.path
+                FROM context_var_dependencies AS c
+                    LEFT JOIN sources s ON s.id = c.source_id
+                    INNER JOIN sources d ON d.id = c.dependency_id
+                WHERE
+                    0 = 1'''
+            query_vars = []
+            for name, value in list(results):
+                if name is None and value is None:
+                    continue
+                subqueries = []
+                if name is not None:
+                    subqueries.append('c.name = ?')
+                    query_vars.append(name)
+                if value is not None:
+                    subqueries.append('''
+                        ((c.value_globbed = 1 AND ? LIKE c.value) OR
+                         (c.value_globbed <> 1 AND ? = c.value))''')
+                    query_vars.append(value)
+                    query_vars.append(value)
+                subqueries.append('(c.source_id IS NULL OR s.path = ?)')
+                query_vars.append(rel)
+                query += ' OR ({0})'.format(' AND '.join(subqueries))
+                results = self.cursor.execute(query, query_vars)
         else:
-            if reverse:
-                results = self.cursor.execute('''
-                    SELECT c.name
-                    FROM context_vars AS c
-                        INNER JOIN sources s ON s.id = c.source_id
-                    WHERE
-                        s.path = ?
-                    ''', (rel, ))
-                return [(result[0], result[1]) for result in results]
-            else:
-                results = self.cursor.execute('''
-                    SELECT cd.name
-                    FROM context_var_dependencies AS cd
-                        INNER JOIN sources s ON s.id = cd.dependency_id
-                    WHERE
-                        s.path = ?
-                    ''', (rel, ))
-            return [result[0] for result in results]
+            results = self.cursor.execute('''
+                SELECT c.name, c.value, c.value_globbed, s.path
+                FROM context_var_dependencies AS c
+                    LEFT JOIN sources s ON s.id = c.source_id
+                    INNER JOIN sources d ON d.id = c.dependency_id
+                WHERE
+                    d.path = ?
+                ''', (rel, ))
+            query = '''
+                SELECT c.name, c.value, s.path
+                FROM context_vars AS c
+                    INNER JOIN sources s ON s.id = c.source_id
+                WHERE
+                    0 = 1'''
+            query_vars = []
+            for name, value, globbed, path in list(results):
+                if name is None and value is None and path is None:
+                    continue
+                subqueries = []
+                if name is not None:
+                    subqueries.append('c.name = ?')
+                    query_vars.append(name)
+                if value is not None:
+                    if globbed == 1:
+                        subqueries.append('c.value LIKE ?')
+                    else:
+                        subqueries.append('c.value = ?')
+                    query_vars.append(value)
+                if path is not None:
+                    subqueries.append('s.path = ?')
+                    query_vars.append(path)
+                query += ' OR ({0})'.format(' AND '.join(subqueries))
+            results = self.cursor.execute(query, query_vars)
+
+        return set([ContextResult(result[0], result[1], self.app.source_path(result[2])) for result in results])
 
     def _get_dependencies_recursive(self, source, reverse, _parent_deps=None):
         if _parent_deps is None:
             _parent_deps = set()
-        dependencies = set(self.get_dependencies(source, reverse=reverse, sources=True))
+        dependencies = self.get_dependencies(source, reverse=reverse)
         for dependency in list(dependencies):
             if dependency not in _parent_deps:
-                dependencies |= self._get_dependencies_recursive(dependency, reverse, _parent_deps=dependencies)
+                dependencies |= self._get_dependencies_recursive(dependency.source, reverse, _parent_deps=dependencies)
         return dependencies
 
-    def set_dependencies(self, source, values):
+    def clear_dependencies(self, dependency):
         """
-        Set context var dependencies for a source path.
+        Removes all dependencies for a source path.
 
         Args:
-            source: Source path to set dependencies for.
-            values: List of context var names the source path depends on.
+            dependency: Source path to remove dependencies from.
         """
-        sid = self.app.sources.add(source)
-        self.cursor.execute('DELETE FROM context_var_dependencies WHERE dependency_id = ?', (sid, ))
-        self.cursor.executemany('''
+        did = self.app.sources.add_source(dependency)
+        self.cursor.execute('DELETE FROM context_var_dependencies WHERE dependency_id = ?', (did, ))
+
+    def add_dependency(self, dependency, name, value=None, source=None):
+        """
+        Add a context var dependency for a source path.
+
+        Args:
+            dependency: Source path to set dependencies for.
+            name: Name of the context var the source path depends on.
+            value: Value of the named context var.
+            source: Source path of the named context var.
+        """
+        did = self.app.sources.add_source(dependency)
+        sid = self.app.sources.add_source(source) if source is not None else None
+        # TODO: take in to account escaped characters
+        value_globbed = int('%' in value or '_' in value) if value is not None else False
+        self.cursor.execute('''
             INSERT INTO context_var_dependencies
-                (name, dependency_id)
-                VALUES (?, ?)
-            ''', [(value, sid) for value in values])
+                (name, value, value_globbed, source_id, dependency_id)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (name, value, value_globbed, sid, did))

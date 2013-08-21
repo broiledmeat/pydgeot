@@ -51,7 +51,7 @@ class JinjaProcessor(Processor):
                     context_dict[context_var.name] = context_var.value
                 context_dicts.append(context_dict)
             return context_dicts
-        self._env.globals['get_contexts'] = get_contexts
+        self._env.globals['getcontexts'] = get_contexts
 
         self._generate = {}
 

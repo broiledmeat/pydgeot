@@ -9,7 +9,7 @@ development; any suggestions/criticisms/yellings are more than welcome.
 - Built-in [Jinja2 template](http://jinja.pocoo.org/docs/) and [LESS CSS](http://lesscss.org/) processors.
 
 ### Limitations
-- Built-in processors do not track site structure, and no context variables are available.
+- Built-in processors do not track site structure, though this can be alleviated with context variables.
 
 ### Requirements
 - Python 3.*
@@ -88,7 +88,10 @@ plugins, but more can be loaded by including them in the apps plugin directory, 
 
 #### Built-In Plugins
 - [Jinja2](https://github.com/mitsuhiko/jinja2)
-  Simple Jinja2 template file processor. Does not add any context variables or keep track of site structure.
+  Jinja2 template file processor. `{% set_context name="value" %}` can be used to set a scoped variable, and add a
+  context variable for the file. Use `get_contexts name "value"` to retrieve a list of files that have context variables
+  named `name` and with values matching `value`. `value` may be a glob (`%` character to match any number of characters,
+  and `_` to match any single character.) For example, `{% for page in get_contexts
   `{% set template_only = True %}` can be added to a template file to cause it to not be built (but will still update
   any other template files that are based on it to render when updated.)
 - [Lesscpy](https://github.com/robotis/Lesscpy)

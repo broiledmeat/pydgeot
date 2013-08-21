@@ -88,12 +88,20 @@ plugins, but more can be loaded by including them in the apps plugin directory, 
 
 #### Built-In Plugins
 - [Jinja2](https://github.com/mitsuhiko/jinja2)
-  Jinja2 template file processor. `{% set_context name="value" %}` can be used to set a scoped variable, and add a
-  context variable for the file. Use `get_contexts name "value"` to retrieve a list of files that have context variables
-  named `name` and with values matching `value`. `value` may be a glob (`%` character to match any number of characters,
-  and `_` to match any single character.) For example, `{% for page in get_contexts
-  `{% set template_only = True %}` can be added to a template file to cause it to not be built (but will still update
-  any other template files that are based on it to render when updated.)
+  Jinja2 template file processor.
+  - Setting a context variable
+    `setcontext name="value"` can be used to set a scoped variable, and add a context variable for the file.
+  - Getting context variables
+    Use `getcontexts(name, "value")` to retrieve a list of files that have context variables named `name` and with
+    values matching `value`. `value` may be a glob (`%` character to match any number of characters, and `_` to match
+    any single character.)
+    For example, `{% for page in getcontexts("name", "experiments.%") %}` would
+    find any file with context variables named "name" with values starting with "experiments.", then grab all of that
+    files context variables and set them as properties of `page`.
+  - Marking pages as templates, without building them
+    `{% set template_only = True %}` can be added to a template file to cause it to not be built (but will still update
+    any other template files that are based on it to
+  render when updated.)
 - [Lesscpy](https://github.com/robotis/Lesscpy)
   LessCPY file processor.
 - CopyFallback

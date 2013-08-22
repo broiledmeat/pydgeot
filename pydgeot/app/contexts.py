@@ -100,9 +100,9 @@ class Contexts:
             query += ' AND c.name = ?'
             vars.append(name)
         if value is not None:
-            if '*' in value or '?' in value:
+            if '%' in value or '_' in value:
                 query += ' AND c.value LIKE ?'
-                vars.append(value.replace('*', '%').replace('?', '_'))
+                vars.append(value)
             else:
                 query += ' AND c.value = ?'
                 vars.append(value)

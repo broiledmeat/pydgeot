@@ -56,9 +56,9 @@ class Processor:
             path: File path to process.
         """
         for target in [t.path for t in self.app.sources.get_targets(path)]:
-            if os.path.isfile(target):
+            if os.path.isfile(target) or os.path.islink(target):
                 try:
-                    os.remove(target)
+                    os.unlink(target)
                     root = os.path.dirname(target)
                     if not os.listdir(root):
                         os.rmdir(root)

@@ -42,9 +42,13 @@ class JinjaProcessor(Processor):
             context_dicts = []
             results = self.app.contexts.get_contexts(name, value)
             for result in results:
-                context_dict = {'url': self.app.relative_path(result.source)}
+                context_dict = {}
                 source = self.app.sources.get_source(result.source)
                 if source is not None:
+                    targets = self.app.sources.get_targets(result.source)
+                    if len(targets) == 1:
+                        context_dict['url'] = '/' + self.app.relative_path(list(targets)[0].path)
+                    context_dict['urls'] = ['/' + self.app.relative_path(target.path) for target in targets]
                     context_dict['size'] = source.size
                     context_dict['modified'] = source.modified
                 for context_var in self.app.contexts.get_contexts(source=result.source):
@@ -95,15 +99,19 @@ class JinjaProcessor(Processor):
             # TODO: Get template from ast returned above
             template = self._env.from_string(open(path).read())
 
-            template_vars = {'url': self.app.relative_path(path)}
+            context_dict = {}
             source = self.app.sources.get_source(path)
             if source is not None:
-                template_vars['size'] = source.size
-                template_vars['modified'] = source.modified
+                targets = self.app.sources.get_targets(path)
+                if len(targets) == 1:
+                    context_dict['url'] = '/' + self.app.relative_path(list(targets)[0].path)
+                context_dict['urls'] = ['/' + self.app.relative_path(target.path) for target in targets]
+                context_dict['size'] = source.size
+                context_dict['modified'] = source.modified
 
             os.makedirs(os.path.dirname(target), exist_ok=True)
             f = open(target, 'w', encoding='utf-8')
-            f.write(template.render(**template_vars))
+            f.write(template.render(**context_dict))
             f.close()
             del self._generate[path]
 

@@ -61,7 +61,7 @@ class Sources:
             paths: List of content directory paths to delete entries for.
         """
         for path in paths:
-            regex = self.app.path_regex(path, subdirs=True)
+            regex = self.app.path_regex(path, recursive=True)
             self.cursor.execute('SELECT id FROM sources WHERE path REGEXP ?', (regex, ))
             ids = [result[0] for result in self.cursor.fetchall()]
             if len(ids) > 0:

@@ -339,7 +339,7 @@ class App:
 
         Args:
             path: Directory path.
-            subdirs: Retrieve files in all subdirectories.
+            recursive: Retrieve files in all subdirectories.
 
         Returns:
             A regex string.

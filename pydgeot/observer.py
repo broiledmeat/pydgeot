@@ -174,7 +174,8 @@ elif sys.platform == 'win32':
 
 elif sys.platform == 'darwin':
     try:
-        from fsevents import Observer, Stream
+        from fsevents import Observer as fseObserver
+        from fsevents import Stream as fseStream
 
         class Observer(_ObserverBase):
             """
@@ -185,8 +186,8 @@ elif sys.platform == 'darwin':
             def start(self):
                 def process_event(e):
                     self.queue_changed(e.name)
-                observer = Observer()
-                stream = Stream(process_event, self.path, file_events=True)
+                observer = fseObserver()
+                stream = fseStream(process_event, self.path, file_events=True)
                 observer.schedule(stream)
                 observer.start()
                 while True:
@@ -195,7 +196,7 @@ elif sys.platform == 'darwin':
     except ImportError:
         pass
 
-if 'FSObserver' not in globals():
+if 'Observer' not in globals():
     import time
 
     class Observer(_ObserverBase):

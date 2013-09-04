@@ -9,6 +9,7 @@ class _ObserverBase:
     """
     observer = None
     changed_timeout = 10
+    event_timeout = 2
 
     def __init__(self, path):
         """
@@ -93,7 +94,7 @@ if sys.platform == 'linux':
                 wm.add_watch(self.path, mask, rec=True)
                 while True:
                     notifier.process_events()
-                    if notifier.check_events(2000):
+                    if notifier.check_events(self.event_timeout * 1000):
                         notifier.read_events()
                     self.signal_changed()
 
@@ -147,7 +148,7 @@ elif sys.platform == 'win32':
                         True,
                         mask,
                         overlapped)
-                    rc = win32event.WaitForSingleObject(overlapped.hEvent, 2000)
+                    rc = win32event.WaitForSingleObject(overlapped.hEvent, self.event_timeout * 1000)
                     if rc == win32event.WAIT_OBJECT_0:
                         nbytes = win32file.GetOverlappedResult(handle, overlapped, True)
                         if nbytes:
@@ -191,7 +192,7 @@ elif sys.platform == 'darwin':
                 observer.schedule(stream)
                 observer.start()
                 while True:
-                    time.sleep(2)
+                    time.sleep(self.event_timeout)
                     self.signal_changed()
     except ImportError:
         pass
@@ -205,11 +206,12 @@ if 'Observer' not in globals():
         """
         observer = 'fallback'
         changed_timeout = 25
+        event_timeout = 10
 
         def start(self):
             before = self.get_files_list()
             while True:
-                time.sleep(10)
+                time.sleep(self.event_timeout)
                 after = self.get_files_list()
                 added = [f for f in after if not f in before]
                 removed = [f for f in before if not f in after]

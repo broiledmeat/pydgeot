@@ -73,7 +73,7 @@ class Contexts:
             A ContextResult for the context var, or None if no context var could be found.
         """
         values = self.get_contexts(name, value, source)
-        return values[0] if len(values) > 0 else None
+        return list(values)[0] if len(values) > 0 else None
 
     def get_contexts(self, name=None, value=None, source=None):
         """
@@ -95,22 +95,22 @@ class Contexts:
                 WHERE
                     1=1
             '''
-        vars = []
+        query_vars = []
         if name is not None:
             query += ' AND c.name = ?'
-            vars.append(name)
+            query_vars.append(name)
         if value is not None:
             if '%' in value or '_' in value:
                 query += ' AND c.value LIKE ?'
-                vars.append(value)
+                query_vars.append(value)
             else:
                 query += ' AND c.value = ?'
-                vars.append(value)
+                query_vars.append(value)
         if source is not None:
             rel = self.app.relative_path(source)
             query += ' AND s.path = ?'
-            vars.append(rel)
-        results = self.cursor.execute(query, vars)
+            query_vars.append(rel)
+        results = self.cursor.execute(query, query_vars)
         return set([ContextResult(result[0], result[1], self.app.source_path(result[2])) for result in results])
 
     def set_context(self, source, name, value):

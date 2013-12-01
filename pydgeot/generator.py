@@ -111,11 +111,12 @@ class Generator:
         if os.path.isdir(root):
             for filename in os.listdir(root):
                 path = os.path.join(root, filename)
-                stat = os.stat(path)
-                if os.path.isdir(path):
-                    dirs.add(path)
-                else:
-                    current_sources[path] = datetime.datetime.fromtimestamp(stat.st_mtime)
+                if os.path.exists(path):
+                    stat = os.stat(path)
+                    if os.path.isdir(path):
+                        dirs.add(path)
+                    else:
+                        current_sources[path] = datetime.datetime.fromtimestamp(stat.st_mtime)
 
         for path, mtime in current_sources.items():
             if path not in old_sources or (mtime - old_sources[path]).total_seconds() > 1:

@@ -58,6 +58,8 @@ class JinjaProcessor(Processor):
         self._env.globals['getcontexts'] = get_contexts
 
         self._generate = {}
+        self._set_contexts = {}
+        self.current_path = None
 
     def can_process(self, path):
         return path.endswith('.html')

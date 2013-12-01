@@ -51,13 +51,13 @@ class App:
         if not self.is_valid and raise_invalid:
             raise InvalidAppRoot('App root \'{0}\' does not exist or is not a valid app directory.'.format(self.root))
 
-        self._commands = {}
-        self._processors = []
+        self.commands = {}
+        self.processors = []
 
         # Import builtin commands
         importlib.import_module('pydgeot.commands.builtins')
         for builtin_commands in commands.available.values():
-            self._commands.update(builtin_commands)
+            self.commands.update(builtin_commands)
 
         self.log = logging.getLogger('app')
         self.log.setLevel(logging.DEBUG)
@@ -84,6 +84,11 @@ class App:
                 raise AppError('Could not load config: \'{0}\''.format(e))
 
             # Init database
+            self.db_path = os.path.join(self.store_root, 'pydgeot.db')
+            self.db_connection = None
+            self.db_cursor = None
+            self.sources = None
+            self.contexts = None
             self._init_database()
 
             # Add processor builtins to syspath
@@ -101,12 +106,12 @@ class App:
                         raise AppError('Unable to load plugin \'{0}\': {1}'.format(plugin, e))
                     if plugin in processors.available:
                         for processor in processors.available[plugin]:
-                            self._processors.append(processor(self))
+                            self.processors.append(processor(self))
                     if plugin in commands.available:
-                        self._commands.update(commands.available[plugin])
+                        self.commands.update(commands.available[plugin])
 
             # Sort processors by priority
-            self._processors = sorted(self._processors, key=lambda p: p.priority, reverse=True)
+            self.processors = sorted(self.processors, key=lambda p: p.priority, reverse=True)
 
     def _init_database(self):
         self.db_path = os.path.join(self.store_root, 'pydgeot.db')
@@ -142,7 +147,7 @@ class App:
         """
         Delete all built content.
         """
-        for processor in self._processors:
+        for processor in self.processors:
             processor.reset()
         if os.path.isdir(self.build_root):
             for root, dirs, files in os.walk(self.build_root, topdown=False, followlinks=False):
@@ -169,7 +174,7 @@ class App:
                     sources = [os.path.join(root, file) for file in files]
                     for source in sources:
                         self.processor_delete(source)
-        for processor in self._processors:
+        for processor in self.processors:
             processor.generation_complete()
         self.contexts.clean(paths)
         self.sources.clean(paths)
@@ -185,7 +190,7 @@ class App:
         Returns:
             A file processor, or None if one can not be found.
         """
-        for processor in self._processors:
+        for processor in self.processors:
             if processor.can_process(path):
                 return processor
         return None
@@ -253,7 +258,7 @@ class App:
         """
         Process the changes complete event for all processors.
         """
-        for processor in self._processors:
+        for processor in self.processors:
             processor.generation_complete()
 
     def run_command(self, name, *args):
@@ -271,8 +276,8 @@ class App:
         Returns:
             The return value of the command being run.
         """
-        if name in self._commands:
-            command = self._commands[name]
+        if name in self.commands:
+            command = self.commands[name]
             args_len = len(args) + 1
             arg_count = command.func.__code__.co_argcount
             has_varg = command.func.__code__.co_flags & 0x04 > 0

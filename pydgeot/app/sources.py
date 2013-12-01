@@ -47,10 +47,10 @@ class Sources:
                     ON UPDATE CASCADE)
             ''')
 
-    def _SourceResult(self, *row):
+    def _source_result(self, *row):
         return SourceResult(self.app.source_path(row[0]), row[1], datetime.datetime.fromtimestamp(row[2]))
 
-    def _TargetResult(self, *row):
+    def _target_result(self, *row):
         return SourceResult(self.app.target_path(row[0]), None, None)
 
     def clean(self, paths):
@@ -121,7 +121,7 @@ class Sources:
         """
         rel = self.app.relative_path(source)
         results = list(self.cursor.execute('SELECT path, size, modified FROM sources WHERE path = ?', (rel, )))
-        return self._SourceResult(*results[0]) if len(results) > 0 else None
+        return self._source_result(*results[0]) if len(results) > 0 else None
 
     def get_sources(self, source_dir='', recursive=True):
         """
@@ -136,7 +136,7 @@ class Sources:
         """
         regex = self.app.path_regex(source_dir, recursive)
         results = self.cursor.execute('SELECT path, size, modified FROM sources WHERE path REGEXP ?', (regex, ))
-        return set([self._SourceResult(*result) for result in results])
+        return set([self._source_result(*result) for result in results])
 
     def remove_source(self, source):
         """
@@ -175,7 +175,7 @@ class Sources:
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE st.path = ?
                 ''', (rel, ))
-            return set([self._SourceResult(*result) for result in results])
+            return set([self._source_result(*result) for result in results])
         else:
             results = self.cursor.execute('''
                 SELECT st.path
@@ -183,7 +183,7 @@ class Sources:
                     INNER JOIN sources s ON s.id = st.source_id
                 WHERE s.path = ?
                 ''', (rel, ))
-            return set([self._TargetResult(*result) for result in results])
+            return set([self._target_result(*result) for result in results])
 
     def set_targets(self, source, values):
         """
@@ -247,7 +247,7 @@ class Sources:
                     INNER JOIN sources d ON d.id = sd.dependency_id
                 WHERE s.path = ?
                 ''', (rel, ))
-        return set([self._SourceResult(*result) for result in results])
+        return set([self._source_result(*result) for result in results])
 
     def _get_dependencies_recursive(self, source, reverse, _parent_deps=set()):
         """

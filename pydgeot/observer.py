@@ -198,8 +198,6 @@ elif sys.platform == 'darwin':
         pass
 
 if 'Observer' not in globals():
-    import time
-
     class Observer(_ObserverBase):
         """
         Platform independent fallback file system observer.

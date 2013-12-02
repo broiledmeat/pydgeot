@@ -1,5 +1,6 @@
 from pydgeot.commands import register
 
+
 @register(help_msg='Build static content')
 def build(app):
     from pydgeot.commands import CommandError

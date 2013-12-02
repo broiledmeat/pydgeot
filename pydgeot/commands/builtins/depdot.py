@@ -3,6 +3,9 @@ from pydgeot.commands import register
 
 @register(help_args='[forward|backward|both]', help_msg='Output DOT file showing source dependencies')
 def depdot(app, *dirs):
+    """
+    Generates a DOT file showing file depedencies.
+    """
     import os
     from pydgeot.commands import CommandError
 

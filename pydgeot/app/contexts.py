@@ -69,6 +69,7 @@ class Contexts:
             name: Name of the context var to retrieve.
             value: Value of the context vars to retrieve.
             source: Source path that set the context vars.
+
         Returns:
             A ContextResult for the context var, or None if no context var could be found.
         """
@@ -83,6 +84,7 @@ class Contexts:
             name: Name of the context vars to retrieve.
             value: Value of the context vars to retrieve.
             source: Source path that set the context vars.
+
         Returns:
             A list of ContextResults for found context vars, or an empty list if no context vars could be found.
         """
@@ -171,6 +173,7 @@ class Contexts:
             dependency: Source path to get dependencies for.
             reverse: If true, get context vars that depend on the dependency source path.
             recursive: Return the entire dependency tree.
+
         Returns:
             A list of ContextResults, or an empty list if no dependencies could be found.
         """
@@ -250,6 +253,16 @@ class Contexts:
         return set([ContextResult(result[0], result[1], self.app.source_path(result[2])) for result in results])
 
     def _get_dependencies_recursive(self, source, reverse, _parent_deps=None):
+        """
+        Get all context var dependencies a source path depends on, including all subdependencies.
+
+        Args:
+            dependency: Source path to get dependencies for.
+            reverse: If true, get context vars that depend on the dependency source path.
+
+        Returns:
+            A list of ContextResults, or an empty list if no dependencies could be found.
+        """
         if _parent_deps is None:
             _parent_deps = set()
         dependencies = self.get_dependencies(source, reverse=reverse)

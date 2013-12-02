@@ -8,8 +8,8 @@ class Processor:
     """
     Base class for file processors.
     """
-    priority = 50  # Processors can_process methods are checked in order of priority. Higher priority processors
-                   # are checked earlier.
+    priority = 50  # Processors can_process methods are checked in order of priority. Processors with higher priority
+                   # values are checked earlier.
 
     def __init__(self, app):
         """
@@ -50,7 +50,7 @@ class Processor:
 
     def delete(self, path):
         """
-        Process a deleted file.
+        Process a deleted file. Deletes the container target directory if it is empty.
 
         Args:
             path: File path to process.

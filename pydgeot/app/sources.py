@@ -48,9 +48,29 @@ class Sources:
             ''')
 
     def _source_result(self, *row):
+        """
+        Get a SourceResult from a path, size, modified query from the sources table, with the path transformed in to a
+        source path.
+
+        Args:
+            row: A tuple or Sqlite Row object with at least three elements representing path, size, and modified time,
+                 in that order.
+
+        Returns:
+            SourceResult with the path as a source path.
+        """
         return SourceResult(self.app.source_path(row[0]), row[1], datetime.datetime.fromtimestamp(row[2]))
 
     def _target_result(self, *row):
+        """
+            Get a SourceResult from a path query from the sources table, with the path transformed in to a target path.
+
+            Args:
+                row: A tuple or Sqlite Row object with at least one element representing path as the first element.
+
+            Returns:
+                SourceResult with the path as a target path.
+            """
         return SourceResult(self.app.target_path(row[0]), None, None)
 
     def clean(self, paths):

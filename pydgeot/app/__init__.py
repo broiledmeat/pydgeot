@@ -39,6 +39,8 @@ class App:
         # If it is set, and the directory is invalid, then raise InvalidAppRoot
         raise_invalid = root is not None
         root = root if root is not None else './'
+
+        # Set app path directories
         self.root = os.path.realpath(os.path.abspath(os.path.expanduser(root)))
         self.source_root = os.path.realpath(os.path.join(self.root, 'source'))
         self.store_root = os.path.realpath(os.path.join(self.root, 'store'))
@@ -51,6 +53,7 @@ class App:
         if not self.is_valid and raise_invalid:
             raise InvalidAppRoot('App root \'{0}\' does not exist or is not a valid app directory.'.format(self.root))
 
+        # Initialize the commands dict and processor list
         self.commands = {}
         self.processors = []
 
@@ -59,6 +62,7 @@ class App:
         for builtin_commands in commands.available.values():
             self.commands.update(builtin_commands)
 
+        # Configure logging
         self.log = logging.getLogger('app')
         self.log.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
@@ -114,6 +118,9 @@ class App:
             self.processors = sorted(self.processors, key=lambda p: p.priority, reverse=True)
 
     def _init_database(self):
+        """
+        Connect to the SQLite database.
+        """
         self.db_path = os.path.join(self.store_root, 'pydgeot.db')
         self.db_connection = sqlite3.connect(self.db_path)
         self.db_cursor = self.db_connection.cursor()
@@ -242,7 +249,6 @@ class App:
         Args:
             path: File path to process.
         """
-
         self._processor_call('generate', path, log_call='generate')
 
     def processor_delete(self, path):

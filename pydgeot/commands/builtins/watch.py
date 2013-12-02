@@ -1,7 +1,7 @@
 from pydgeot.commands import register
 
 
-@register(help_args='[file event delay[, file changed timeout]]', help_msg='Continuously build static content')
+@register(help_args='[event delay[, timeout]]', help_msg='Continuously build static content')
 def watch(app, *args):
     import os
     import types

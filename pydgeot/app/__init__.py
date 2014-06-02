@@ -46,7 +46,6 @@ class App:
         self.store_root = os.path.realpath(os.path.join(self.root, 'store'))
         self.log_root = os.path.realpath(os.path.join(self.store_root, 'log'))
         self.build_root = os.path.realpath(os.path.join(self.root, 'build'))
-        self.plugins_root = os.path.realpath(os.path.join(self.root, 'plugins'))
         self.config_path = os.path.realpath(os.path.join(self.root, 'pydgeot.json'))
         self.is_valid = os.path.isdir(self.root) and os.path.isfile(self.config_path)
 
@@ -101,8 +100,6 @@ class App:
 
             # Load plugins
             if 'plugins' in self.settings:
-                if os.path.isdir(self.plugins_root):
-                    sys.path.insert(0, self.plugins_root)
                 for plugin in self.settings['plugins']:
                     try:
                         importlib.import_module(plugin)
@@ -144,7 +141,6 @@ class App:
         os.makedirs(os.path.join(root, 'store'))
         os.makedirs(os.path.join(root, 'store', 'log'))
         os.makedirs(os.path.join(root, 'build'))
-        os.makedirs(os.path.join(root, 'plugins'))
         conf = open(os.path.join(root, 'pydgeot.json'), 'w')
         conf.write('{}')
         conf.close()

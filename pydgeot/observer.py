@@ -25,7 +25,7 @@ class _ObserverBase:
         """
         Start file system observation loop.
         """
-        pass
+        raise NotImplementedError
 
     def queue_changed(self, path):
         """
@@ -59,7 +59,7 @@ class _ObserverBase:
         Args:
             path: File path to signal as having been changed.
         """
-        pass
+        raise NotImplementedError
 
     def is_locked(self, path):
         """

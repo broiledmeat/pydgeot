@@ -85,10 +85,7 @@ class register:
     Decorator to add Processor class definitions to the list of available processors.
     """
     def __init__(self):
-        mod_name = inspect.getmodule(inspect.stack()[1][0]).__name__
-        if '.' in mod_name:
-            mod_name = mod_name[mod_name.rindex('.') + 1:]
-        self.module_name = mod_name
+        self.module_name = inspect.getmodule(inspect.stack()[1][0]).__name__
 
     def __call__(self, cls):
         global available

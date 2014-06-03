@@ -94,13 +94,11 @@ class App:
             self.contexts = None
             self._init_database()
 
-            # Add processor builtins to syspath
-            pkg = pkgutil.get_loader('pydgeot.processors.builtins')
-            sys.path.insert(0, os.path.dirname(pkg.path))
-
             # Load plugins
             if 'plugins' in self.settings:
                 for plugin in self.settings['plugins']:
+                    if plugin.startswith('builtins.'):
+                        plugin = 'pydgeot.processors.' + plugin
                     try:
                         importlib.import_module(plugin)
                     except Exception as e:

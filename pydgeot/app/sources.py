@@ -12,6 +12,12 @@ class SourceResult(namedtuple('SourceResult', ['path', 'size', 'modified'])):
 
 class Sources:
     def __init__(self, app):
+        """
+        Initialize a new Source instance for the given App.
+
+        :param app: App to manage source pathsfor.
+        :type app: pydgeot.app.App
+        """
         self.app = app
         self.cursor = self.app.db_cursor
 
@@ -52,24 +58,22 @@ class Sources:
         Get a SourceResult from a path, size, modified query from the sources table, with the path transformed in to a
         source path.
 
-        Args:
-            row: A tuple or Sqlite Row object with at least three elements representing path, size, and modified time,
-                 in that order.
-
-        Returns:
-            SourceResult with the path as a source path.
+        :param row: Tuple or Sqlite Row object with at least three elements representing path, size, and modified time,
+                    in that order.
+        :type row: tuple[str, int, int]
+        :return: SourceResult with the path as a source path.
+        :rtype: pydgeot.app.sources.SourceResult
         """
         return SourceResult(self.app.source_path(row[0]), row[1], datetime.datetime.fromtimestamp(row[2]))
 
     def _target_result(self, *row):
         """
-            Get a SourceResult from a path query from the sources table, with the path transformed in to a target path.
+        Get a SourceResult from a path query from the sources table, with the path transformed in to a target path.
 
-            Args:
-                row: A tuple or Sqlite Row object with at least one element representing path as the first element.
-
-            Returns:
-                SourceResult with the path as a target path.
+        :param row: Tuple or Sqlite Row object with at least one element representing path as the first element.
+        :type row: tuple[str]
+        :return: SourceResult with the path as a target path.
+        :rtype: pydgeot.app.sources.SourceResult
             """
         return SourceResult(self.app.target_path(row[0]), None, None)
 
@@ -77,8 +81,8 @@ class Sources:
         """
         Delete entries under the given source directories and their subdirectories.
 
-        Args:
-            paths: List of content directory paths to delete entries for.
+        :param paths: List of content directory paths to delete entries for.
+        :type paths: list[str]
         """
         for path in paths:
             regex = self.app.path_regex(path, recursive=True)

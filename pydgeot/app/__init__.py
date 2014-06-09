@@ -20,7 +20,14 @@ class AppError(Exception):
 
 def _db_regex_func(expr, item):
     """
-    REGEXP function for SQLite. Return true if a match is found.
+    REGEXP search function for SQLite.
+
+    :param expr:
+    :type expr: str
+    :param item:
+    :type item:
+    :return: True if a match is found.
+    :rtype: bool
     """
     import re
     reg = re.compile(expr, re.I)
@@ -32,8 +39,8 @@ class App:
         """
         Initialize a new App instance for the given app directory.
 
-        Args:
-            root: The app directory path root to initialize at.
+        :param root: App directory path root to initialize at. If None the current working directory will be used.
+        :type root: str | None
         """
         # If root is None, then try to use the current directory. If it doesn't work then just set is_valid to false.
         # If it is set, and the directory is invalid, then raise InvalidAppRoot
@@ -126,13 +133,12 @@ class App:
     @classmethod
     def create(cls, path):
         """
-        Create a new app directory structure.
+        Create a new app directory.
 
-        Args:
-            path: Directory path to create new app directory at.
-
-        Returns:
-            An app instance for the new app directory.
+        :param path: Directory path to create as a new app directory.
+        :type path: str
+        :return: App instance for the new app directory.
+        :rtype: pydgeot.app.App
         """
         root = os.path.abspath(os.path.expanduser(path))
         os.makedirs(os.path.join(root, 'source'))
@@ -164,8 +170,8 @@ class App:
         Process delete events for all files under the given paths. Simulates the paths as having been deleted, without
         actually deleting the source files, allowing the source files to be rebuilt completely.
 
-        Args:
-            paths: List of directory paths to clean.
+        :param paths: List of directory paths to clean. If None, the source root will be cleaned.
+        :type paths: list[str] | None
         """
         if paths is None:
             paths = [self.source_root]
@@ -185,11 +191,10 @@ class App:
         """
         Get a processor able to handle the given path.
 
-        Args:
-            path: File path to get a processor for.
-
-        Returns:
-            A file processor, or None if one can not be found.
+        :param path: File path to get a capable processor for.
+        :type path: str
+        :return: File processor, or None if a processor capable of handling the file cannot be found.
+        :rtype: pydgeot.app.processors.Processor | None
         """
         for processor in self.processors:
             if processor.can_process(path):
@@ -200,14 +205,16 @@ class App:
         """
         Helper method to call a function on a paths appropriate file processor.
 
-        Args:
-            name: Name of the function to call.
-            path: File path to process.
-            default: Default value to return if no processor can be found.
-            log_call: Log this call.
-
-        Returns:
-            A tuple containing the processor used, and its return value of the method called.
+        :param name: Name of the function to call.
+        :type name: str
+        :param path: File path to process.
+        :type path: str
+        :param default: Value to return if no processor could be found.
+        :type default: object
+        :param log_call: Log this call.
+        :type log_call: bool
+        :return: Tuple containing the processor used (if any,) and its return value of the method called.
+        :rtype: (pydgeot.app.processors.Processor | None, object)
         """
         processor = self.get_processor(path)
         if processor is not None and hasattr(processor, name):
@@ -230,8 +237,8 @@ class App:
         """
         Process a prepare event for the given path.
 
-        Args:
-            path: File path to process.
+        :param path: File path to process.
+        :type path: str
         """
         self._processor_call('prepare', path)
 
@@ -239,8 +246,8 @@ class App:
         """
         Process a generate event for the given path.
 
-        Args:
-            path: File path to process.
+        :param path: File path to process.
+        :type path: str
         """
         self._processor_call('generate', path, log_call=True)
 
@@ -248,8 +255,8 @@ class App:
         """
         Process a delete event for the given path.
 
-        Args:
-            path: File path to process.
+        :param path: File path to process.
+        :type path: str
         """
         return self._processor_call('delete', path, log_call=True)
 
@@ -264,16 +271,14 @@ class App:
         """
         Run a command.
 
-        Args:
-            name: Name of the command to run.
-            args: Arguments to pass to the command.
-
-        Raises:
-            CommandError: If a command with the name does not exist, or if the command does not take the number of
-                          arguments given.
-
-        Returns:
-            The return value of the command being run.
+        :param name: Name of the command to run.
+        :type name: str
+        :param args: Arguments to pass to the command.
+        :type args: list(object)
+        :return: Return value of the command being run.
+        :rtype: object
+        :raises pydgeot.app.CommandError: If a command with the given name does not exist.
+        :raises pydgeot.app.CommandError: If the number of arguments passed to the command is not correct.
         """
         if name in self.commands:
             command = self.commands[name]
@@ -290,13 +295,12 @@ class App:
 
     def source_path(self, path):
         """
-        Get a source path from a build or relative path.
+        Get a source path from a relative or target path.
 
-        Args:
-            relative: Relative path.
-
-        Returns:
-            A source path.
+        :param path: Relative or target path.
+        :type path: str
+        :return: Source path.
+        :rtype: str
         """
         if path.startswith(self.source_root):
             return path
@@ -306,13 +310,12 @@ class App:
 
     def target_path(self, path):
         """
-        Get a target path from a source or relative path.
+        Get a target path from a relative or source path.
 
-        Args:
-            relative: Relative path.
-
-        Returns:
-            A target path.
+        :param path: Relative or source path.
+        :type path: str
+        :return: Target path.
+        :rtype: str
         """
         if path.startswith(self.source_root):
             path = os.path.relpath(path, self.source_root)
@@ -324,11 +327,10 @@ class App:
         """
         Get a relative path from a source or target path.
 
-        Args:
-            path: Source or target path.
-
-        Returns:
-            A relative path.
+        :param path: Source or target path.
+        :type path: str
+        :return: Relative path.
+        :rtype: str
         """
         if path.startswith(self.source_root):
             path = os.path.relpath(path, self.source_root)
@@ -341,12 +343,12 @@ class App:
         """
         Get a regex for the given directory path. Used for retrieving file paths in or under the given directory.
 
-        Args:
-            path: Directory path.
-            recursive: Retrieve files in all subdirectories.
-
-        Returns:
-            A regex string.
+        :param path: Directory path.
+        :type path: str
+        :param recursive: Regex should retrieve files in all subdirectories.
+        :type recursive: bool
+        :return: Regex path for the given directory.
+        :rtype: str
         """
         rel = self.relative_path(path)
         if recursive:

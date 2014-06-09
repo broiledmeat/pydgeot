@@ -14,8 +14,8 @@ class ChangeSet:
         """
         Merge from another ChangeSet.
 
-        Args:
-            other: ChangeSet to merge changes from.
+        :param other: ChangeSet to merge changes from.
+        :type other: pydgeot.generator.ChangeSet
         """
         self.generate |= other.generate
         self.delete |= other.delete
@@ -23,12 +23,13 @@ class ChangeSet:
 
 class Generator:
     """
-    Source content builder for App instances.
+    Source content builder for App instances. Determines file changes in the Apps source directory, and passes modified
+    files to the appropriate processors to generate content in the Apps build directory.
     """
     def __init__(self, app):
         """
-        Args:
-            app: Parent App instance.
+        :param app: Parent App instance.
+        :type app: pydgeot.app.App
         """
         self.app = app
 
@@ -45,8 +46,8 @@ class Generator:
         """
         Build content for a given ChangeSet.
 
-        Args:
-            changes: ChangeSet to build content for.
+        :param changes: ChangeSet to build content for.
+        :type changes: pydgeot.generator.ChangeSet
         """
         for path in changes.delete:
             self.app.processor_delete(path)
@@ -94,11 +95,10 @@ class Generator:
         """
         Find updated or deleted files in a directory.
 
-        Args:
-            root: Directory path to look for changes in.
-
-        Returns:
-            A ChangeSet instance, representing any changed files.
+        :param root: Directory path to look for changes in.
+        :type root: str
+        :return: ChangeSet instance, representing any changed files.
+        :rtype: pydgeot.generator.ChangeSet
         """
         if root is None:
             root = self.app.source_root

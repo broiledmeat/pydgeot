@@ -214,7 +214,7 @@ class App:
         :param log_call: Log this call.
         :type log_call: bool
         :return: Tuple containing the processor used (if any,) and its return value of the method called.
-        :rtype: (pydgeot.app.processors.Processor | None, object)
+        :rtype: tuple[pydgeot.app.processors.Processor | None, object]
         """
         processor = self.get_processor(path)
         if processor is not None and hasattr(processor, name):

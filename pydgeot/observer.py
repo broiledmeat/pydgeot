@@ -15,8 +15,8 @@ class _ObserverBase:
         """
         Initialize the observer.
 
-        Args:
-            path: Directory path to observe.
+        :param path: Directory path to observe.
+        :type path: str
         """
         self.path = path
         self.changed = {}
@@ -32,8 +32,8 @@ class _ObserverBase:
         Place a file change event in to the change queue. Should be called from the observation loop when file changes
         are detected.
 
-        Args:
-            path: File path to place in to the change queue.
+        :param path: File path to place in to the change queue.
+        :type path: str
         """
         if not os.path.isdir(path):
             self.changed[path] = time.time()
@@ -56,8 +56,8 @@ class _ObserverBase:
         Called when a file change has been through the queue and timed out (when the file can be sure to have finished
         changing.) This should be overridden in the observer instance.
 
-        Args:
-            path: File path to signal as having been changed.
+        :param path: File path to signal as having been changed.
+        :type path: str
         """
         raise NotImplementedError
 
@@ -65,11 +65,10 @@ class _ObserverBase:
         """
         Check if a file is locked (still being written to.)
 
-        Args:
-            path: File path to check if is locked.
-
-        Returns:
-            Whether the file path is locked.
+        :param path: File path to check if is locked.
+        :type path: str
+        :return: If the file path is being written to.
+        :rtype: bool
         """
         return False
 
@@ -102,8 +101,8 @@ if sys.platform == 'linux':
                 """
                 Pyinotify catch-all change event.
 
-                Args:
-                    e: Pyinotify change event.
+                :param e: Pyinotify change event.
+                :type e: pyinotify.ProcessEvent
                 """
                 self.queue_changed(e.pathname)
     except ImportError:
@@ -224,8 +223,8 @@ if 'Observer' not in globals():
             """
             Get a flat list of file paths with modified times.
 
-            Returns:
-                A list of tuples containing a file path and its modified time.
+            :return: List of tuples containing a file path and its modified time.
+            :rtype: list[tuple[str, int]]
             """
             walk = os.walk(self.path)
             files = [os.path.join(path, filename) for path, dirs, files in walk for filename in files]

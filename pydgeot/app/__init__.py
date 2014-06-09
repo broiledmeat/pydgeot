@@ -196,16 +196,15 @@ class App:
                 return processor
         return None
 
-    def _processor_call(self, name, path, default=None, log_call=None):
+    def _processor_call(self, name, path, default=None, log_call=False):
         """
         Helper method to call a function on a paths appropriate file processor.
 
         Args:
             name: Name of the function to call.
             path: File path to process.
-            args: List of extra arguments to pass.
-            kwargs: Dictionary of extra keyword arguments to pass.
             default: Default value to return if no processor can be found.
+            log_call: Log this call.
 
         Returns:
             A tuple containing the processor used, and its return value of the method called.
@@ -215,7 +214,7 @@ class App:
             try:
                 value = getattr(processor, name)(path)
 
-                if log_call is not None:
+                if log_call:
                     rel = self.relative_path(path)
                     proc_name = processor.__class__.__name__
                     self.log.info('Processed \'%s\' %s with %s', rel, name, proc_name)
@@ -243,7 +242,7 @@ class App:
         Args:
             path: File path to process.
         """
-        self._processor_call('generate', path, log_call='generate')
+        self._processor_call('generate', path, log_call=True)
 
     def processor_delete(self, path):
         """
@@ -252,7 +251,7 @@ class App:
         Args:
             path: File path to process.
         """
-        return self._processor_call('delete', path, log_call='delete')
+        return self._processor_call('delete', path, log_call=True)
 
     def processor_generation_complete(self):
         """

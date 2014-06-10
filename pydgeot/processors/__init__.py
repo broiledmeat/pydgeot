@@ -13,8 +13,8 @@ class Processor:
 
     def __init__(self, app):
         """
-        Args:
-            app: Parent App instance.
+        :param app: Parnet App instance.
+        :type app: pydgeot.app.App
         """
         self.app = app
 
@@ -22,11 +22,10 @@ class Processor:
         """
         Check if the Processor is able to process the given file path.
 
-        Args:
-            path: File path to check.
-
-        Returns:
-            True if the file path is processable, False otherwise.
+        :param path: File path to check.
+        :type path: str
+        :return: If the file path is processable.
+        :rtype: bool
         """
         return False
 
@@ -34,8 +33,8 @@ class Processor:
         """
         Preprocess a source file. Sets targets and dependencies, without generating content.
 
-        Args:
-            path: File path to process.
+        :param path: File path to preproess.
+        :type path: str
         """
         pass
 
@@ -43,8 +42,8 @@ class Processor:
         """
         Generate content for a prepared source file.
 
-        Args:
-            path: File path to process.
+        :param path: File path to process.
+        :type path: str
         """
         pass
 
@@ -52,8 +51,8 @@ class Processor:
         """
         Process a deleted file. Deletes the container target directory if it is empty.
 
-        Args:
-            path: File path to process.
+        :param path: File path to delete.
+        :type path: str
         """
         for target in [t.path for t in self.app.sources.get_targets(path)]:
             if os.path.isfile(target) or os.path.islink(target):

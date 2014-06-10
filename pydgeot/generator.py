@@ -15,7 +15,7 @@ class ChangeSet:
         Merge from another ChangeSet.
 
         :param other: ChangeSet to merge changes from.
-        :type other: pydgeot.generator.ChangeSet
+        :type other: pydgeot.generator.ChangeSet()
         """
         self.generate |= other.generate
         self.delete |= other.delete
@@ -29,7 +29,7 @@ class Generator:
     def __init__(self, app):
         """
         :param app: Parent App instance.
-        :type app: pydgeot.app.App
+        :type app: pydgeot.app.App()
         """
         self.app = app
 

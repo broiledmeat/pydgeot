@@ -9,12 +9,16 @@ class ContextResult(namedtuple('ContextResult', ['name', 'value', 'source'])):
 
 
 class Contexts:
+    """
+    Context variable manager for App instances. Context variables are arbitrary data that can be set or retrieved in
+    Processor instances.
+    """
     def __init__(self, app):
         """
         Initialize a new Contexts instance for the given App.
 
         :param app: App to manage context variables for.
-        :type app: pydgeot.app.App
+        :type app: pydgeot.app.App()
         """
         self.app = app
         self.cursor = self.app.db_cursor

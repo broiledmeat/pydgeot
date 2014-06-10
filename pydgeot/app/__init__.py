@@ -138,7 +138,7 @@ class App:
         :param path: Directory path to create as a new app directory.
         :type path: str
         :return: App instance for the new app directory.
-        :rtype: pydgeot.app.App
+        :rtype: pydgeot.app.App()
         """
         root = os.path.abspath(os.path.expanduser(path))
         os.makedirs(os.path.join(root, 'source'))

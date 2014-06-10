@@ -27,6 +27,11 @@ class SetContextExtension(Extension):
 @register()
 class JinjaProcessor(Processor):
     def __init__(self, app):
+        """
+        Compile a Jinja (http://jinja.pocoo.org/) template source file in to the build directory.
+
+        Context variables can be set
+        """
         super().__init__(app)
 
         self._env = jinja2.Environment(

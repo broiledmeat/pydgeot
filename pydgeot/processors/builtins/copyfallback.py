@@ -5,6 +5,9 @@ from pydgeot.processors import register, Processor
 
 @register()
 class CopyFallbackProcessor(Processor):
+    """
+    Copies any target file over to the build directory. Run with lowest priority.
+    """
     priority = 0
 
     def can_process(self, path):

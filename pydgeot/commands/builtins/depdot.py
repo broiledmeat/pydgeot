@@ -10,7 +10,8 @@ def depdot(app, *dirs):
     :type app: pydgeot.app.App()
     :param dirs: Direction of dependencies to generate. 'forward' will show what context variables a source file creates
                  and what other source files depend on it. 'backward' will show what context variables it uses, and what
-                 other source files it depends on. Not specifying either will default to both.
+                 other source files it depends on. 'both' or both 'forward' and 'backward', or nothing will show both
+                 forward and backward connections.
     :type args: list[str]
     """
     import os

@@ -6,15 +6,20 @@ available = {}
 
 class Processor:
     """
-    Base class for file processors.
+    Base class for file processors. When generating content, an App will call can_process on each registered processor,
+    in sequential order (sorted by the processors priority.) The first processor to return True will then be used for
+    content preparation, generation, and deletion. Generally, preparation will determine what files a source file should
+    generate, what other source files it depends on, and sets any context variables the source file creates. After all
+    modified files have been prepared, generation will be run, creating and updating targets files in the build
+    directory.
     """
     priority = 50  # Processors can_process methods are checked in order of priority. Processors with higher priority
                    # values are checked earlier.
 
     def __init__(self, app):
         """
-        :param app: Parnet App instance.
-        :type app: pydgeot.app.App
+        :param app: Parent App instance.
+        :type app: pydgeot.app.App()
         """
         self.app = app
 
@@ -40,7 +45,7 @@ class Processor:
 
     def generate(self, path):
         """
-        Generate content for a prepared source file.
+        Generate content for a prepared source file. Called after all preparation is complete.
 
         :param path: File path to process.
         :type path: str

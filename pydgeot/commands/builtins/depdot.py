@@ -4,7 +4,14 @@ from pydgeot.commands import register
 @register(help_args='[forward|backward|both]', help_msg='Output DOT file showing source dependencies')
 def depdot(app, *dirs):
     """
-    Generates a DOT file showing file depedencies.
+    Generates a DOT file showing file and context variable dependencies.
+
+    :param app: App instance to generate a DOT file for.
+    :type app: pydgeot.app.App()
+    :param dirs: Direction of dependencies to generate. 'forward' will show what context variables a source file creates
+                 and what other source files depend on it. 'backward' will show what context variables it uses, and what
+                 other source files it depends on. Not specifying either will default to both.
+    :type args: list[str]
     """
     import os
     from pydgeot.commands import CommandError

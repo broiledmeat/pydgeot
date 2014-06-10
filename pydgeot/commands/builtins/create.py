@@ -3,6 +3,14 @@ from pydgeot.commands import register
 
 @register(help_args='PATH', help_msg='Generate a new Pydgeot app directory')
 def create(app, path):
+    """
+    Create a new App directory.
+
+    :param app: Unused.
+    :type app: pydgeot.app.App() | None
+    :param path: Directory path to create as an App directory.
+    :type path: str
+    """
     import os
     from pydgeot.commands import CommandError
     from pydgeot.app import App

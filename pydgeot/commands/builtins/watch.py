@@ -3,6 +3,15 @@ from pydgeot.commands import register
 
 @register(help_args='[event delay[, timeout]]', help_msg='Continuously build static content')
 def watch(app, *args):
+    """
+    Build content for an App instance, and then monitor changes, building content as needed.
+
+    :param app: App instance to watch and build content for.
+    :type app: pydgeot.app.App()
+    :param args: List of optional parameters for the content generator. The first element will be used for the event
+                 timeout. The second will be used for the file changed timeout.
+    :type args: list[str]
+    """
     import os
     import types
     from pydgeot.commands import CommandError

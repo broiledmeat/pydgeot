@@ -6,15 +6,20 @@ available = {}
 
 class Processor:
     """
-    Base class for file processors.
+    Base class for file processors. When generating content, an App will call can_process on each registered processor,
+    in sequential order (sorted by the processors priority.) The first processor to return True will then be used for
+    content preparation, generation, and deletion. Generally, preparation will determine what files a source file should
+    generate, what other source files it depends on, and sets any context variables the source file creates. After all
+    modified files have been prepared, generation will be run, creating and updating targets files in the build
+    directory.
     """
     priority = 50  # Processors can_process methods are checked in order of priority. Processors with higher priority
                    # values are checked earlier.
 
     def __init__(self, app):
         """
-        Args:
-            app: Parent App instance.
+        :param app: Parent App instance.
+        :type app: pydgeot.app.App()
         """
         self.app = app
 
@@ -22,11 +27,10 @@ class Processor:
         """
         Check if the Processor is able to process the given file path.
 
-        Args:
-            path: File path to check.
-
-        Returns:
-            True if the file path is processable, False otherwise.
+        :param path: File path to check.
+        :type path: str
+        :return: If the file path is processable.
+        :rtype: bool
         """
         return False
 
@@ -34,17 +38,17 @@ class Processor:
         """
         Preprocess a source file. Sets targets and dependencies, without generating content.
 
-        Args:
-            path: File path to process.
+        :param path: File path to preproess.
+        :type path: str
         """
         pass
 
     def generate(self, path):
         """
-        Generate content for a prepared source file.
+        Generate content for a prepared source file. Called after all preparation is complete.
 
-        Args:
-            path: File path to process.
+        :param path: File path to process.
+        :type path: str
         """
         pass
 
@@ -52,8 +56,8 @@ class Processor:
         """
         Process a deleted file. Deletes the container target directory if it is empty.
 
-        Args:
-            path: File path to process.
+        :param path: File path to delete.
+        :type path: str
         """
         for target in [t.path for t in self.app.sources.get_targets(path)]:
             if os.path.isfile(target) or os.path.islink(target):

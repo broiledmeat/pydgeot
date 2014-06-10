@@ -5,6 +5,9 @@ from pydgeot.utils.filesystem import create_symlink
 
 @register()
 class SymlinkFallbackProcessor(Processor):
+    """
+    Creates a symlink for any target file in to the build directory. Run with lowest priority.
+    """
     priority = 0
 
     def can_process(self, path):

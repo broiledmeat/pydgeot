@@ -11,7 +11,17 @@ class SourceResult(namedtuple('SourceResult', ['path', 'size', 'modified'])):
 
 
 class Sources:
+    """
+    File relationship manager for App instances. Source files must be registered, as well as what files they generate
+    and what files they depend on to do so.
+    """
     def __init__(self, app):
+        """
+        Initialize a new Source instance for the given App.
+
+        :param app: App to manage source pathsfor.
+        :type app: pydgeot.app.App()
+        """
         self.app = app
         self.cursor = self.app.db_cursor
 
@@ -52,33 +62,31 @@ class Sources:
         Get a SourceResult from a path, size, modified query from the sources table, with the path transformed in to a
         source path.
 
-        Args:
-            row: A tuple or Sqlite Row object with at least three elements representing path, size, and modified time,
-                 in that order.
-
-        Returns:
-            SourceResult with the path as a source path.
+        :param row: Tuple or Sqlite Row object with at least three elements representing path, size, and modified time,
+                    in that order.
+        :type row: tuple[str, int, int] | sqlite3.Row
+        :return: SourceResult with the path as a source path.
+        :rtype: pydgeot.app.sources.SourceResult
         """
         return SourceResult(self.app.source_path(row[0]), row[1], datetime.datetime.fromtimestamp(row[2]))
 
     def _target_result(self, *row):
         """
-            Get a SourceResult from a path query from the sources table, with the path transformed in to a target path.
+        Get a SourceResult from a path query from the sources table, with the path transformed in to a target path.
 
-            Args:
-                row: A tuple or Sqlite Row object with at least one element representing path as the first element.
-
-            Returns:
-                SourceResult with the path as a target path.
-            """
+        :param row: Tuple or Sqlite Row object with at least one element representing path as the first element.
+        :type row: tuple[str] | sqlite3.Row
+        :return: SourceResult with the path as a target path.
+        :rtype: pydgeot.app.sources.SourceResult
+        """
         return SourceResult(self.app.target_path(row[0]), None, None)
 
     def clean(self, paths):
         """
         Delete entries under the given source directories and their subdirectories.
 
-        Args:
-            paths: List of content directory paths to delete entries for.
+        :param paths: List of content directory paths to delete entries for.
+        :type paths: list[str]
         """
         for path in paths:
             regex = self.app.path_regex(path, recursive=True)
@@ -99,11 +107,10 @@ class Sources:
         """
         Add a source entry to the database. Updates file information if the entry already exists.
 
-        Args:
-            source: Source path to add.
-
-        Returns:
-            The entries database id.
+        :param source: Source path to add.
+        :type source: str
+        :return: Entries database id.
+        :rtype: int
         """
         rel = self.app.relative_path(source)
         try:
@@ -133,11 +140,10 @@ class Sources:
         """
         Get a SourceResult for the given path.
 
-        Args:
-            source: Source file path.
-
-        Returns:
-            A SourceResult for the given path, or None if the path does not exist.
+        :param source: Source file path.
+        :type source: str
+        :return: SourceResult for the given path, or None if the path does not exist.
+        :rtype: pydgeot.app.sources.SourceResult | None
         """
         rel = self.app.relative_path(source)
         results = list(self.cursor.execute('SELECT path, size, modified FROM sources WHERE path = ?', (rel, )))
@@ -147,12 +153,12 @@ class Sources:
         """
         Get a list SourceResults for sources in the given directory.
 
-        Args:
-            source_dir: Source directory to get files for.
-            recursive: Return results in subdirectories of source_dir.
-
-        Returns:
-            A list of SourceResults, or an empty list if no sources could be found.
+        :param source_dir: Source directory to get files for.
+        :type source_dir: str
+        :param recursive: Return results in subdirectories of source_dir.
+        :type recursive: bool
+        :return: Set of SourceResults.
+        :rtype: set[pydgeot.app.sources.SourceResult]
         """
         regex = self.app.path_regex(source_dir, recursive)
         results = self.cursor.execute('SELECT path, size, modified FROM sources WHERE path REGEXP ?', (regex, ))
@@ -162,8 +168,8 @@ class Sources:
         """
         Remove a source entry, and any associated source dependencies and target files.
 
-        Args:
-            source: Source file path to remove.
+        :param source: Source file path to remove.
+        :type source: str
         """
         rel = self.app.relative_path(source)
         self.cursor.execute('SELECT id FROM sources WHERE path = ?', (rel, ))
@@ -178,14 +184,14 @@ class Sources:
         """
         Get a list of target paths that a source path has generated.
 
-        Args:
-            source: Source path to get targets path for.
-            reverse: Perform a reverse lookup instead. Returning source paths for a given target path. The source
-                     argument should be given a target path.
-
-        Returns:
-            A list of SourceResults for target paths (where size and modified time will be None), or if reverse is True,
-            a list of SourceResults for source paths.
+        :param source: Source path to get targets path for.
+        :type source: str
+        :param reverse: Perform a reverse lookup instead. Returning source paths for a given target path. The source
+                        argument should be given a target path.
+        :type reverse: bool
+        :return: Set of SourceResults for target paths (where size and modified time will be None.) If reverse is True,
+                 a set of SourceResults for source paths.
+        :rtype: set[pydgeot.app.sources.SourceResult]
         """
         rel = self.app.relative_path(source)
         if reverse:
@@ -209,9 +215,10 @@ class Sources:
         """
         Set target paths for a source path.
 
-        Args:
-            source: Source path to set target paths for.
-            values: List of target paths.
+        :param source: Source path to set target paths for.
+        :type source: str
+        :param values: List of target paths.
+        :type values: list[str]
         """
         rel = self.app.relative_path(source)
         self.cursor.execute('''
@@ -239,14 +246,15 @@ class Sources:
          get_dependencies('base.html') => []
          get_dependencies('base.html', reverse=True) => ['fileA.html', 'fileB.html']
 
-        Args:
-            source: Source path to get dependency paths for.
-            reverse: Perform a reverse lookup instead. Return source paths that depend on the given source path to
-                     generate.
-            recursive: Include dependencies of dependencies. It's turtles all the way down.
-
-        Returns:
-            A list of source paths.
+        :param source: Source path to get dependency paths for.
+        :type source: str
+        :param reverse: Perform a reverse lookup instead. Return source paths that depend on the given source path to
+                        generate.
+        :type reverse: bool
+        :param recursive: Include dependencies of dependencies. It's turtles all the way down.
+        :type recursive: bool
+        :return: Set of SourceResults.
+        :rtype: set[pydgeot.app.sources.SourceResult]
         """
         if recursive:
             return self._get_dependencies_recursive(source, reverse)
@@ -273,14 +281,13 @@ class Sources:
         """
         Get a list of all dependencies for a file, cascading in dependencies of dependencies.
 
-        Args:
-            source: Source path to get dependency paths for.
-            reverse: Perform a reverse lookup instead. Return source paths that depend on the given source path to
-                     generate.
-            _parent_deps: Set used to track files that have already been looked at. Prevents infinite loops.
-
-        Returns:
-            A list of source paths.
+        :param source: Source path to get dependency paths for.
+        :type source: str
+        :param reverse: Perform a reverse lookup instead. Return source paths that depend on the given source path to
+                        generate.
+        :type reverse: bool
+        :return: Set of SourceResults.
+        :rtype: set[pydgeot.app.sources.SourceResult]
         """
         dependencies = self.get_dependencies(source, reverse=reverse)
         for dependency in list(dependencies):
@@ -292,9 +299,10 @@ class Sources:
         """
         Set source dependencies for a source path.
 
-        Args:
-            source: Source path to set dependency paths for.
-            values: List of source dependency paths.
+        :param source: Source path to set dependency paths for.
+        :type source: str
+        :param values: List of source dependency paths.
+        :type values: list[str]
         """
         sid = self.add_source(source)
         self.cursor.execute('DELETE FROM source_dependencies WHERE source_id = ?', (sid, ))

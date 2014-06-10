@@ -5,6 +5,9 @@ from pydgeot.processors import register, Processor
 
 @register()
 class LessCSSProcessor(Processor):
+    """
+    Compile a Less (http://lesscss.org/) source file in to the build directory.
+    """
     def __init__(self, app):
         super().__init__(app)
         self.parser = parser.LessParser()

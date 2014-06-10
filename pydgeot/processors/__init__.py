@@ -32,7 +32,7 @@ class Processor:
         :return: If the file path is processable.
         :rtype: bool
         """
-        return False
+        raise NotImplementedError
 
     def prepare(self, path):
         """

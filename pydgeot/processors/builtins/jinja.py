@@ -26,12 +26,15 @@ class SetContextExtension(Extension):
 
 @register()
 class JinjaProcessor(Processor):
-    def __init__(self, app):
-        """
-        Compile a Jinja (http://jinja.pocoo.org/) template source file in to the build directory.
+    """
+    Compile a Jinja (http://jinja.pocoo.org/) template source file in to the build directory.
 
-        Context variables can be set
-        """
+    Context variables can be set using the 'setcontext' tag. This also works as Jinja's built in 'set' tag.
+    File paths that have set context variables can be retrieved with 'getcontexts("name", "value")'.
+    To mark a file as only being used as a template (no file will be generated for it,) use Jinja's built in 'set' to
+    set the 'template_only' variable to True.
+    """
+    def __init__(self, app):
         super().__init__(app)
 
         self._env = jinja2.Environment(

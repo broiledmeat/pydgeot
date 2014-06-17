@@ -8,9 +8,6 @@ development; any suggestions/criticisms/yellings are more than welcome.
 - File processor and command plugins.
 - Built-in [Jinja2 template](http://jinja.pocoo.org/docs/) and [LESS CSS](http://lesscss.org/) processors.
 
-### Limitations
-- Built-in processors do not track site structure, though this can be alleviated with context variables.
-
 ### Requirements
 - Python 3.*
 - [DocOpt](https://github.com/docopt/docopt)
@@ -64,27 +61,26 @@ A Pydgeot app directory contains the following directories and files.
 - `build/` Content built from the `source/` directory
 - `store/` Working data store for Pydgeot and plugins
 - `store/log/` Log files
-- `plugins/` Plugins to be available
 - `pydgeot.json` Configuration file
 
 ### Configuration<a id="_configuration"></a>
 Pydgeot keeps a single JSON configuration file for itself and plugins. Before Pydgeot will do anything of use, the
-configuration file must have at least the `plugins` field set (which is also the only field Pydgeot currently reads.)
+configuration file must have at least the `plugins` field set (which is also the only field Pydgeot itself currently
+reads.)
 
 - `plugins`
-  A list of plugins load. The names must be the name of a python file, without an extension. A simple configuration
-  file specifying only loading Pydgeots built-in plugins would look like:
+  A list of plugin modules to load. Each name corresponds to a python module. A simple configuration file specifying
+  only loading Pydgeots built-in plugins would look like:
 
   ```json
   {
-    'plugins': ['jinja', 'lesscss', 'copyfallback']
+    'plugins': ['builtins.jinja', 'builtins.copyfallback']
   }
   ```
 
 ### Plugins
 Pydgeot plugins are optional modules that may add commands and/or file processors. Pydgeot does come with a few built-in
-plugins, but more can be loaded by including them in the apps plugin directory, and added them to the configurations
-`plugins` list.
+plugins, but more can be loaded by adding them to the configurations `plugins` list.
 
 #### Built-In Plugins
 - [Jinja2](https://github.com/mitsuhiko/jinja2)
@@ -99,10 +95,12 @@ plugins, but more can be loaded by including them in the apps plugin directory, 
     find any file with context variables named "name" with values starting with "experiments.", then grab all of that
     files context variables and set them as properties of `page`.
   - Marking pages as templates, without building them
-    `{% set template_only = True %}` can be added to a template file to cause it to not be built (but will still update
+    `{% set template_only=True %}` can be added to a template file to cause it to not be built (but will still update
     any other template files that are based on it to
   render when updated.)
 - [Lesscpy](https://github.com/robotis/Lesscpy)
   LessCPY file processor.
 - CopyFallback
-  Simply copies any files not handled by other file processors.
+  Copies any files not handled by other file processors.
+- SymlinkFallback
+  Creates symlinks for files not handled by other file processors.

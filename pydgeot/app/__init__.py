@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import logging.handlers
 import json
 import importlib
 import pkgutil
@@ -83,7 +84,10 @@ class App:
 
             # Config logging
             os.makedirs(self.log_root, exist_ok=True)
-            file_handler = logging.FileHandler(os.path.join(self.log_root, 'app.log'), encoding='utf-8')
+            file_handler = logging.handlers.RotatingFileHandler(os.path.join(self.log_root, 'app.log'),
+                                                                encoding='utf-8',
+                                                                maxBytes=2 * 1024 * 1024,
+                                                                backupCount=2)
             file_handler.setFormatter(formatter)
             self.log.addHandler(file_handler)
 

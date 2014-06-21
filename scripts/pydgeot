@@ -18,10 +18,11 @@ if __name__ == '__main__':
     from docopt import docopt
 
     sys.path = sys.path[1:]
+    from pydgeot import __version__
     from pydgeot.app import App, AppError, InvalidAppRoot
     from pydgeot.commands import CommandError
 
-    args = docopt(__doc__, version='Pydgeot 0.2')
+    args = docopt(__doc__, version='Pydgeot ' + '.'.join(map(lambda x: str(x), __version__)))
 
     try:
         app = App(args['--app'])

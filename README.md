@@ -17,7 +17,7 @@ Additionally, the built-in Jinja2 and Lesscpy processors require [Jinja2](https:
 
 ### Installation
 ```bash
-git clone https://github.com/broiledmeat/pydgeot.py pydgeot
+git clone https://github.com/broiledmeat/pydgeot pydgeot
 cd pydgeot
 python setup.py install
 ```

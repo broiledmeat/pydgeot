@@ -23,13 +23,13 @@ def depdot(app, *dirs):
         render_forward = render_backward = True
 
     path = os.path.join(app.store_root, 'deps.dot')
-    f = open(path, 'w')
+    fh = open(path, 'w')
 
     indent_level = 0
 
     def write(line):
         line = '{0}{1}'.format(' ' * indent_level * 2, str(line))
-        f.write(line + '\n')
+        fh.write(line + '\n')
 
     if app.is_valid:
         write('graph Dependencies {')
@@ -63,6 +63,7 @@ def depdot(app, *dirs):
         indent_level -= 1
         write('}')
 
+        fh.close()
         print('Wrote {0}'.format(path))
     else:
         raise CommandError('Need a valid Pydgeot app directory.')

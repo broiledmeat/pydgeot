@@ -167,8 +167,8 @@ elif sys.platform == 'win32':
                     # When copying files, Windows will only report one change event. On large files this can cause the
                     # change queue to timeout and signal a change prematurely. Luckily, the file won't be open for read
                     # until the copy operation is done, so check for readability.
-                    f = open(path, 'r')
-                    f.close()
+                    with open(path, 'r'):
+                        pass
                     return False
                 except IOError:
                     return True

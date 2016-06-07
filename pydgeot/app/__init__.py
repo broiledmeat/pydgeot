@@ -91,7 +91,8 @@ class App:
 
             # Get settings
             try:
-                self.settings = json.load(open(self.config_path))
+                with open(self.config_path) as fh:
+                    self.settings = json.load(fh)
             except ValueError as e:
                 raise AppError('Could not load config: \'{0}\''.format(e))
 
@@ -147,9 +148,8 @@ class App:
         os.makedirs(os.path.join(root, 'store'))
         os.makedirs(os.path.join(root, 'store', 'log'))
         os.makedirs(os.path.join(root, 'build'))
-        conf = open(os.path.join(root, 'pydgeot.json'), 'w')
-        conf.write('{}')
-        conf.close()
+        with open(os.path.join(root, 'pydgeot.json'), 'w') as fh:
+            fh.write('{}')
         return App(root)
 
     def reset(self):

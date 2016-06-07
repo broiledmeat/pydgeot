@@ -86,7 +86,8 @@ class JinjaProcessor(Processor):
             self._set_contexts = {}
 
             target = self.target_path(path)
-            ast = self._env.parse(open(path).read())
+            with open(path) as fh:
+                ast = self._env.parse(fh.read())
 
             self.app.sources.set_targets(path, [target])
             self.app.sources.set_dependencies(path,
@@ -114,7 +115,8 @@ class JinjaProcessor(Processor):
         if path in self._generate:
             target, ast = self._generate[path]
             # TODO: Get template from ast returned above
-            template = self._env.from_string(open(path).read())
+            with open(path) as fh:
+                template = self._env.from_string(fh.read())
 
             context_dict = {}
             source = self.app.sources.get_source(path)
@@ -127,9 +129,8 @@ class JinjaProcessor(Processor):
                 context_dict['modified'] = source.modified
 
             os.makedirs(os.path.dirname(target), exist_ok=True)
-            f = open(target, 'w', encoding='utf-8')
-            f.write(template.render(**context_dict))
-            f.close()
+            with open(target, 'w', encoding='utf-8') as fh:
+                fh.write(template.render(**context_dict))
             del self._generate[path]
 
     def target_path(self, path):

@@ -23,9 +23,8 @@ class LessCSSProcessor(Processor):
         rel = os.path.relpath(path, self.app.source_root)
         target = os.path.join(self.app.build_root, rel)
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        f = open(target, 'w')
-        f.write(self.formatter.format(self.parser))
-        f.close()
+        with open(target, 'w') as fh:
+            fh.write(self.formatter.format(self.parser))
         self.app.sources.set_targets(path, [target])
 
     class _LessOpts:

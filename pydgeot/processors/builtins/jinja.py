@@ -39,6 +39,8 @@ class JinjaProcessor(Processor):
     To mark a file as only being used as a template (no file will be generated for it,) use Jinja's built in 'set' to
     set the 'template_only' variable to True.
     """
+    name = 'Jinja'
+
     def __init__(self, app):
         super().__init__(app)
 

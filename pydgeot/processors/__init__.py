@@ -13,9 +13,14 @@ class Processor:
     modified files have been prepared, generation will be run, creating and updating targets files in the build
     directory.
     """
+    # Display name for logging/etc, None will use __class__.name
+    name = None
+    """:type: str | None"""
+
     # Processors can_process methods are checked in order of priority. Processors with higher priority values are
     # checked earlier.
     priority = 50
+    """:type: int"""
 
     def __init__(self, app):
         """

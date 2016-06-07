@@ -200,7 +200,7 @@ class App:
                 return processor
         return None
 
-    def _processor_call(self, name, path, default=None, log_call=False):
+    def _processor_call(self, name, path, default=None):
         """
         Helper method to call a function on a paths appropriate file processor.
 
@@ -210,26 +210,23 @@ class App:
         :type path: str
         :param default: Value to return if no processor could be found.
         :type default: object
-        :param log_call: Log this call.
-        :type log_call: bool
         :return: Tuple containing the processor used (if any,) and its return value of the method called.
         :rtype: tuple[pydgeot.app.processors.Processor | None, object]
         """
         processor = self.get_processor(path)
         if processor is not None and hasattr(processor, name):
+            rel_path = self.relative_path(path)
+            proc_name = processor.name if processor.name else processor.__class__.__name__
+
             try:
                 value = getattr(processor, name)(path)
 
-                if log_call:
-                    rel = self.relative_path(path)
-                    proc_name = processor.__class__.__name__
-                    self.log.info('Processed \'%s\' %s with %s', rel, name, proc_name)
+                if name != 'prepare':
+                    self.log.info('[%s] %s "%s"', proc_name, name, rel_path)
 
                 return processor, value
             except Exception as e:
-                rel = os.path.relpath(path, self.source_root)
-                proc_name = processor.__class__.__name__
-                self.log.exception('Exception occurred processing \'%s\' %s with %s: %s', rel, name, proc_name, str(e))
+                self.log.exception('[%s] exception.%s "%s" %s', proc_name, name, rel_path, str(e))
         return None, default
 
     def processor_prepare(self, path):
@@ -248,7 +245,7 @@ class App:
         :param path: File path to process.
         :type path: str
         """
-        self._processor_call('generate', path, log_call=True)
+        self._processor_call('generate', path)
 
     def processor_delete(self, path):
         """
@@ -257,7 +254,7 @@ class App:
         :param path: File path to process.
         :type path: str
         """
-        return self._processor_call('delete', path, log_call=True)
+        return self._processor_call('delete', path)
 
     def processor_generation_complete(self):
         """
@@ -286,7 +283,7 @@ class App:
             has_varg = command.func.__code__.co_flags & 0x04 > 0
 
             if (has_varg and args_len >= arg_count) or (not has_varg and args_len == arg_count):
-                self.log.debug('Running command \'%s\'', ' '.join([name] + list(args)))
+                self.log.debug('Command "%s"', ' '.join([name] + list(args)))
                 return command.func(self, *args)
             else:
                 raise commands.CommandError('Incorrect number of arguments passed to command \'{0}\''.format(name))

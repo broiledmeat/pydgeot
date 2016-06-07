@@ -8,6 +8,7 @@ class SymlinkFallbackProcessor(Processor):
     """
     Creates a symlink for any target file in to the build directory. Run with lowest priority.
     """
+    name = 'Symlink'
     priority = 0
 
     def can_process(self, path):

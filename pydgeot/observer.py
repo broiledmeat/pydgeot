@@ -20,6 +20,8 @@ class _ObserverBase:
         """
         self.path = path
         self.changed = {}
+        self.on_changed_handlers = set()
+        """:type: set[callable[str]]"""
 
     def start(self):
         """
@@ -59,7 +61,8 @@ class _ObserverBase:
         :param path: File path to signal as having been changed.
         :type path: str
         """
-        raise NotImplementedError
+        for handler in self.on_changed_handlers:
+            handler(path)
 
     def is_locked(self, path):
         """
@@ -210,8 +213,8 @@ if 'Observer' not in globals():
             while True:
                 time.sleep(self.event_timeout)
                 after = self.get_files_list()
-                added = [f for f in after if not f in before]
-                removed = [f for f in before if not f in after]
+                added = [f for f in after if f not in before]
+                removed = [f for f in before if f not in after]
                 updated = [f for f in after if f in before and after[f] != before[f]]
                 for path in added + removed + updated:
                     path = os.path.abspath(os.path.join(self.path, path))
@@ -223,8 +226,8 @@ if 'Observer' not in globals():
             """
             Get a flat list of file paths with modified times.
 
-            :return: List of tuples containing a file path and its modified time.
-            :rtype: list[tuple[str, int]]
+            :return: Dict of file paths and modified times.
+            :rtype: dict[str, int]
             """
             walk = os.walk(self.path)
             files = [os.path.join(path, filename) for path, dirs, files in walk for filename in files]

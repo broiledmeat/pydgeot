@@ -9,6 +9,11 @@ from pydgeot.processors import register, Processor
 class SetContextExtension(Extension):
     tags = {'setcontext'}
 
+    def __init__(self, environment):
+        super().__init__(environment)
+        self.processor = None
+        """:type: JinjaProcessor"""
+
     def parse(self, parser):
         lineno = next(parser.stream).lineno
         name = parser.stream.expect('name')
@@ -131,14 +136,17 @@ class JinjaProcessor(Processor):
     def add_set_context(self, name, value):
         self._set_contexts[name] = value
 
-    def _get_const_vars(self, ast):
+    @staticmethod
+    def _get_const_vars(ast):
         const_vars = {}
         for node in ast.find_all((jinja2.nodes.Assign, )):
             if isinstance(node.target, jinja2.nodes.Name) and isinstance(node.node, jinja2.nodes.Const):
+                # noinspection PyUnresolvedReferences
                 const_vars[node.target.name] = node.node.value
         return const_vars
 
-    def _get_context_requests(self, ast):
+    @staticmethod
+    def _get_context_requests(ast):
         context_requests = []
         for node in ast.find_all(jinja2.nodes.Call, ):
             if isinstance(node.node, jinja2.nodes.Name) and len(node.args) == 2 and \

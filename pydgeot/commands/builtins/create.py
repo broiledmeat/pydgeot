@@ -1,6 +1,7 @@
 from pydgeot.commands import register
 
 
+# noinspection PyUnusedLocal
 @register(help_args='PATH', help_msg='Generate a new Pydgeot app directory')
 def create(app, path):
     """

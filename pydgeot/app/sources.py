@@ -3,11 +3,8 @@ import datetime
 from collections import namedtuple
 
 
-class SourceResult(namedtuple('SourceResult', ['path', 'size', 'modified'])):
-    """
-    Named Tuple containing a sources path, size, and modified time.
-    """
-    pass
+SourceResult = namedtuple('SourceResult', ['path', 'size', 'modified'])
+"""Named Tuple containing a sources path, size, and modified time."""
 
 
 class Sources:

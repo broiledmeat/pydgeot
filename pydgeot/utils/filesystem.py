@@ -12,8 +12,7 @@ def is_dotfile(path):
     :return: If any part of the file path is a dot file.
     :rtype: bool
     """
-    parts = path.split(os.sep)
-    return any([part != '..' and part.startswith('.') for part in parts])
+    return any([part != '..' and part.startswith('.') for part in path.split(os.sep)])
 
 if sys.platform == 'win32':
     try:
@@ -46,6 +45,7 @@ if sys.platform == 'win32':
             except (AttributeError, AssertionError):
                 return False
     except ImportError:
+        # noinspection PyUnusedLocal
         def is_hidden(path):
             return False
 

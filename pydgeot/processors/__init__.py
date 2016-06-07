@@ -13,8 +13,9 @@ class Processor:
     modified files have been prepared, generation will be run, creating and updating targets files in the build
     directory.
     """
-    priority = 50  # Processors can_process methods are checked in order of priority. Processors with higher priority
-                   # values are checked earlier.
+    # Processors can_process methods are checked in order of priority. Processors with higher priority values are
+    # checked earlier.
+    priority = 50
 
     def __init__(self, app):
         """
@@ -77,6 +78,7 @@ class Processor:
         """
         pass
 
+    # noinspection PyMethodMayBeStatic
     def reset(self):
         """
         Called when an App instance is reset.
@@ -84,10 +86,12 @@ class Processor:
         pass
 
 
+# noinspection PyPep8Naming
 class register:
     """
     Decorator to add Processor class definitions to the list of available processors.
     """
+
     def __init__(self):
         self.module_name = inspect.getmodule(inspect.stack()[1][0]).__name__
 

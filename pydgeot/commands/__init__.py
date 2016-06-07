@@ -24,6 +24,7 @@ class Command:
         self.help_msg = help_msg
 
 
+# noinspection PyPep8Naming
 class register:
     """
     Decorator to add command functions to the list of available commands.

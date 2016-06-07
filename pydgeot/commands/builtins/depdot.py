@@ -12,7 +12,7 @@ def depdot(app, *dirs):
                  and what other source files depend on it. 'backward' will show what context variables it uses, and what
                  other source files it depends on. 'both' or both 'forward' and 'backward', or nothing will show both
                  forward and backward connections.
-    :type args: list[str]
+    :type dirs: list[str]
     """
     import os
     from pydgeot.commands import CommandError

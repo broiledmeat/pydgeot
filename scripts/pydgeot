@@ -24,6 +24,8 @@ if __name__ == '__main__':
 
     args = docopt(__doc__, version='Pydgeot ' + '.'.join(map(lambda x: str(x), __version__)))
 
+    app = None
+
     try:
         app = App(args['--app'])
     except (AppError, InvalidAppRoot) as e:
@@ -33,10 +35,11 @@ if __name__ == '__main__':
     if args['commands']:
         args['<command>'] = 'commands'
 
-    try:
-        app.run_command(args['<command>'], *args['<args>'])
-    except CommandError as e:
-        print(e)
-        exit(2)
-    except KeyboardInterrupt:
-        pass
+    if app is not None:
+        try:
+            app.run_command(args['<command>'], *args['<args>'])
+        except CommandError as e:
+            print(e)
+            exit(2)
+        except KeyboardInterrupt:
+            pass

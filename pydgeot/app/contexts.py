@@ -1,11 +1,8 @@
 from collections import namedtuple
 
 
-class ContextResult(namedtuple('ContextResult', ['name', 'value', 'source'])):
-    """
-    Named Tuple containing a context vars name, value, and source path.
-    """
-    pass
+ContextResult = namedtuple('ContextResult', ['name', 'value', 'source'])
+"""Named Tuple containing a context vars name, value, and source path."""
 
 
 class Contexts:

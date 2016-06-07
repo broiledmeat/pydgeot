@@ -1,10 +1,8 @@
 import os
-import sys
 import logging
 import logging.handlers
 import json
 import importlib
-import pkgutil
 import sqlite3
 from pydgeot import processors, commands
 from pydgeot.app.sources import Sources
@@ -169,21 +167,18 @@ class App:
         os.unlink(self.db_path)
         self._init_database()
 
-    def clean(self, paths=None):
+    def clean(self, paths):
         """
         Process delete events for all files under the given paths. Simulates the paths as having been deleted, without
         actually deleting the source files, allowing the source files to be rebuilt completely.
 
-        :param paths: List of directory paths to clean. If None, the source root will be cleaned.
-        :type paths: list[str] | None
+        :param paths: List of directory paths to clean.
+        :type paths: list[str]
         """
-        if paths is None:
-            paths = [self.source_root]
         for path in paths:
             if os.path.isdir(path):
                 for root, dirs, files in os.walk(path, topdown=False, followlinks=False):
-                    sources = [os.path.join(root, file) for file in files]
-                    for source in sources:
+                    for source in [os.path.join(root, file) for file in files]:
                         self.processor_delete(source)
         for processor in self.processors:
             processor.generation_complete()

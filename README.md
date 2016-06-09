@@ -74,7 +74,7 @@ reads.)
 
   ```json
   {
-    'plugins': ['builtins.jinja', 'builtins.copyfallback']
+    "plugins": ["builtins.jinja", "builtins.copyfallback"]
   }
   ```
 

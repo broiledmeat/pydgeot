@@ -1,6 +1,6 @@
 import os
 from pydgeot.processors import register, Processor
-from pydgeot.utils.filesystem import create_symlink
+from pydgeot.filesystem import create_symlink
 
 
 @register()

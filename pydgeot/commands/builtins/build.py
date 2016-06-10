@@ -7,7 +7,7 @@ def build(app):
     Generate content for an App instance.
 
     :param app: App instance to generate content for.
-    :type app: pydgeot.app.App()
+    :type app: pydgeot.app.App
     """
     from pydgeot.commands import CommandError
     from pydgeot.generator import Generator

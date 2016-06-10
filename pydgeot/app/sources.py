@@ -17,7 +17,7 @@ class Sources:
         Initialize a new Source instance for the given App.
 
         :param app: App to manage source pathsfor.
-        :type app: pydgeot.app.App()
+        :type app: pydgeot.app.App
         """
         self.app = app
         self.cursor = self.app.db_cursor

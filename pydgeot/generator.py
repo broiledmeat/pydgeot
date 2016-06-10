@@ -29,7 +29,7 @@ class Generator:
     def __init__(self, app):
         """
         :param app: Parent App instance.
-        :type app: pydgeot.app.App()
+        :type app: pydgeot.app.App
         """
         self.app = app
 

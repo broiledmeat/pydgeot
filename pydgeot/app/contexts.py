@@ -15,7 +15,7 @@ class Contexts:
         Initialize a new Contexts instance for the given App.
 
         :param app: App to manage context variables for.
-        :type app: pydgeot.app.App()
+        :type app: pydgeot.app.App
         """
         self.app = app
         self.cursor = self.app.db_cursor

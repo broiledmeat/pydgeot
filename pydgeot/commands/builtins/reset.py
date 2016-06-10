@@ -7,7 +7,7 @@ def reset(app):
     Clean content and wipe databases for an App instance.
 
     :param app: App instance to reset.
-    :type app: pydgeot.app.App()
+    :type app: pydgeot.app.App
     """
     from pydgeot.commands import CommandError
 

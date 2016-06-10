@@ -8,7 +8,7 @@ def create(app, path):
     Create a new App directory.
 
     :param app: Unused.
-    :type app: pydgeot.app.App() | None
+    :type app: pydgeot.app.App | None
     :param path: Directory path to create as an App directory.
     :type path: str
     """

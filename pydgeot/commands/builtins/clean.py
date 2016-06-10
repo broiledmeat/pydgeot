@@ -7,7 +7,7 @@ def clean(app, *args):
     Clean content for specific directories in an App instance.
 
     :param app: App instance to clean content for.
-    :type app: pydgeot.app.App()
+    :type app: pydgeot.app.App
     :param args: List of directories (relative to the source directory) to clean.
     :type args: list[str]
     """

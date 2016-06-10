@@ -98,11 +98,11 @@ class App:
 
             # Init database
             self.db_path = os.path.join(self.store_root, 'pydgeot.db')
-            self.db_connection = None
-            self.db_cursor = None
-            self.sources = None
-            self.contexts = None
-            self._init_database()
+            self.db_connection = sqlite3.connect(self.db_path)
+            self.db_connection.create_function('REGEXP', 2, _db_regex_func)
+            self.db_cursor = self.db_connection.cursor()
+            self.sources = Sources(self)
+            self.contexts = Contexts(self)
 
             # Load plugins
             if 'plugins' in self.settings:
@@ -122,17 +122,6 @@ class App:
             # Sort processors by priority
             self.processors = sorted(self.processors, key=lambda p: p.priority, reverse=True)
 
-    def _init_database(self):
-        """
-        Connect to the SQLite database.
-        """
-        self.db_path = os.path.join(self.store_root, 'pydgeot.db')
-        self.db_connection = sqlite3.connect(self.db_path)
-        self.db_cursor = self.db_connection.cursor()
-        self.db_connection.create_function('REGEXP', 2, _db_regex_func)
-        self.sources = Sources(self)
-        self.contexts = Contexts(self)
-
     @classmethod
     def create(cls, path):
         """
@@ -141,7 +130,7 @@ class App:
         :param path: Directory path to create as a new app directory.
         :type path: str
         :return: App instance for the new app directory.
-        :rtype: pydgeot.app.App()
+        :rtype: pydgeot.app.App
         """
         root = os.path.abspath(os.path.expanduser(path))
         os.makedirs(os.path.join(root, 'source'))

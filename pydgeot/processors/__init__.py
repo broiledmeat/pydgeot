@@ -2,6 +2,7 @@ import os
 import inspect
 
 available = {}
+""":type: dict[str, callable[pydgeot.app.App]"""
 
 
 class Processor:
@@ -13,7 +14,7 @@ class Processor:
     modified files have been prepared, generation will be run, creating and updating targets files in the build
     directory.
     """
-    # Display name for logging/etc, None will use __class__.name
+    # Display name for config/logging/etc, None will use __class__.name
     name = None
     """:type: str | None"""
 
@@ -77,6 +78,7 @@ class Processor:
         self.app.contexts.remove_context(source=path)
         self.app.sources.remove_source(path)
 
+    # noinspection PyMethodMayBeStatic
     def generation_complete(self):
         """
         Called after a Generator instance finishes processing a group of changes.
@@ -102,6 +104,5 @@ class register:
 
     def __call__(self, cls):
         global available
-        if self.module_name not in available:
-            available[self.module_name] = []
-        available[self.module_name].append(cls)
+        name = cls.__name__ if cls.name is None else cls.name
+        available[name] = cls

@@ -1,6 +1,7 @@
 import inspect
 
 available = {}
+""":type: dict[str, Command]"""
 
 
 class Command:
@@ -10,7 +11,7 @@ class Command:
     def __init__(self, func, name, help_args, help_msg):
         """
         :param func: Command function to be called.
-        :type func: types.FunctionType
+        :type func: callable[pydgeot.app.App, *object]
         :param name: Name of the command, if None, the name of the function is used.
         :type name: str | None
         :param help_args: Usage text describing arguments.
@@ -51,9 +52,7 @@ class register:
     def __call__(self, func):
         global available
         command = Command(func, self.name, self.help_args, self.help_msg)
-        if self.module_name not in available:
-            available[self.module_name] = {}
-        available[self.module_name][command.name] = command
+        available[command.name] = command
 
 
 class CommandError(Exception):

@@ -1,10 +1,11 @@
+import json
 import os
 import logging
 import logging.handlers
-import json
 import importlib
 import sqlite3
 from pydgeot import processors, commands
+from pydgeot.app.dirconfig import DirConfig
 from pydgeot.app.sources import Sources
 from pydgeot.app.contexts import Contexts
 
@@ -33,6 +34,17 @@ def _db_regex_func(expr, item):
     return reg.search(item) is not None
 
 
+def _merge_dict(a, b):
+    import copy
+    merged = copy.copy(a)
+    for key in b:
+        if key in merged and isinstance(merged[key], dict) and isinstance(b[key], dict):
+            merged[key] = _merge_dict(merged[key], b[key])
+            continue
+        merged[key] = b[key]
+    return merged
+
+
 class App:
     def __init__(self, root=None):
         """
@@ -52,20 +64,29 @@ class App:
         self.store_root = os.path.realpath(os.path.join(self.root, 'store'))
         self.log_root = os.path.realpath(os.path.join(self.store_root, 'log'))
         self.build_root = os.path.realpath(os.path.join(self.root, 'build'))
-        self.config_path = os.path.realpath(os.path.join(self.root, 'pydgeot.json'))
+        self.config_path = os.path.realpath(os.path.join(self.root, 'pydgeot.conf'))
         self.is_valid = os.path.isdir(self.root) and os.path.isfile(self.config_path)
 
         if not self.is_valid and raise_invalid:
             raise InvalidAppRoot('App root \'{0}\' does not exist or is not a valid app directory.'.format(self.root))
 
-        # Initialize the commands dict and processor list
+        # Directory path and config dictionary
+        self.configurations = {}
+        """:type: dict[str, DirConfig]"""
+        # Command name and callable
         self.commands = {}
-        self.processors = []
+        """:type: dict[str, callable]"""
+        # Processor name and instance
+        self.processors = {}
+        """:type: dict[str, pydgeot.processors.Processor]"""
 
-        # Import builtin commands
-        importlib.import_module('pydgeot.commands.builtins')
-        for builtin_commands in commands.available.values():
-            self.commands.update(builtin_commands)
+        self.db_path = os.path.join(self.store_root, 'pydgeot.db')
+        self.db_connection = None
+        self.db_cursor = None
+        self.sources = None
+        """:type: Sources | None"""
+        self.contexts = None
+        """:type: Contexts | None"""
 
         # Configure logging
         self.log = logging.getLogger('app')
@@ -90,37 +111,42 @@ class App:
             self.log.addHandler(file_handler)
 
             # Get settings
-            try:
-                with open(self.config_path) as fh:
-                    self.settings = json.load(fh)
-            except ValueError as e:
-                raise AppError('Could not load config: \'{0}\''.format(e))
+            config = {}
+            config_path = os.path.join(self.root, 'pydgeot.conf')
+            if os.path.isfile(config_path):
+                try:
+                    with open(config_path) as fh:
+                        config = json.load(fh)
+                except ValueError as e:
+                    raise AppError('Could not load config \'{}\': \'{}\''.format(config_path, e))
 
             # Init database
-            self.db_path = os.path.join(self.store_root, 'pydgeot.db')
-            self.db_connection = sqlite3.connect(self.db_path)
-            self.db_connection.create_function('REGEXP', 2, _db_regex_func)
-            self.db_cursor = self.db_connection.cursor()
-            self.sources = Sources(self)
-            self.contexts = Contexts(self)
+            self._init_database()
+
+            # Import builtin processors and commands
+            # noinspection PyUnresolvedReferences
+            from pydgeot.commands import builtins
+            # noinspection PyUnresolvedReferences
+            from pydgeot.processors import builtins
 
             # Load plugins
-            if 'plugins' in self.settings:
-                for plugin in self.settings['plugins']:
-                    if plugin.startswith('builtins.'):
-                        plugin = 'pydgeot.processors.' + plugin
-                    try:
-                        importlib.import_module(plugin)
-                    except Exception as e:
-                        raise AppError('Unable to load plugin \'{0}\': {1}'.format(plugin, e))
-                    if plugin in processors.available:
-                        for processor in processors.available[plugin]:
-                            self.processors.append(processor(self))
-                    if plugin in commands.available:
-                        self.commands.update(commands.available[plugin])
+            # noinspection PyTypeChecker
+            for plugin in config.get('plugins', []):
+                try:
+                    importlib.import_module(plugin)
+                except Exception as e:
+                    raise AppError('Unable to load plugin \'{0}\': {1}'.format(plugin, e))
 
-            # Sort processors by priority
-            self.processors = sorted(self.processors, key=lambda p: p.priority, reverse=True)
+            self.commands.update(commands.available)
+            for name, processor in processors.available.items():
+                self.processors[name] = processor(self)
+
+    def _init_database(self):
+        self.db_connection = sqlite3.connect(self.db_path)
+        self.db_connection.create_function('REGEXP', 2, _db_regex_func)
+        self.db_cursor = self.db_connection.cursor()
+        self.sources = Sources(self)
+        self.contexts = Contexts(self)
 
     @classmethod
     def create(cls, path):
@@ -137,7 +163,7 @@ class App:
         os.makedirs(os.path.join(root, 'store'))
         os.makedirs(os.path.join(root, 'store', 'log'))
         os.makedirs(os.path.join(root, 'build'))
-        with open(os.path.join(root, 'pydgeot.json'), 'w') as fh:
+        with open(os.path.join(root, 'pydgeot.conf'), 'w') as fh:
             fh.write('{}')
         return App(root)
 
@@ -145,7 +171,7 @@ class App:
         """
         Delete all built content.
         """
-        for processor in self.processors:
+        for processor in self.processors.values():
             processor.reset()
         if os.path.isdir(self.build_root):
             for root, dirs, files in os.walk(self.build_root, topdown=False, followlinks=False):
@@ -169,11 +195,30 @@ class App:
                 for root, dirs, files in os.walk(path, topdown=False, followlinks=False):
                     for source in [os.path.join(root, file) for file in files]:
                         self.processor_delete(source)
-        for processor in self.processors:
+        for processor in self.processors.values():
             processor.generation_complete()
         self.contexts.clean(paths)
         self.sources.clean(paths)
         self.db_connection.commit()
+
+    def get_config(self, path):
+        """
+        Get the configuration for the given path.
+
+        :param path: File path to get the configuration for.
+        :type path: str
+        :return: Configuration dictionary for the given path.
+        :rtype: pydgeot.app.dirconfig.DirConfig
+        """
+        if os.path.isfile(path):
+            path = os.path.dirname(path)
+
+        if path in self.configurations:
+            return self.configurations[path]
+
+        config = DirConfig(self, path)
+        self.configurations[path] = config
+        return config
 
     def get_processor(self, path):
         """
@@ -184,7 +229,9 @@ class App:
         :return: File processor, or None if a processor capable of handling the file cannot be found.
         :rtype: pydgeot.app.processors.Processor | None
         """
-        for processor in self.processors:
+        config = self.get_config(path)
+
+        for processor in config.processors:
             if processor.can_process(path):
                 return processor
         return None
@@ -249,7 +296,7 @@ class App:
         """
         Process the changes complete event for all processors.
         """
-        for processor in self.processors:
+        for processor in self.processors.values():
             processor.generation_complete()
 
     def run_command(self, name, *args):

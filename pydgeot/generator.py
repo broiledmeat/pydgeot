@@ -100,6 +100,8 @@ class Generator:
         :return: ChangeSet instance, representing any changed files.
         :rtype: pydgeot.generator.ChangeSet
         """
+        from pydgeot.filesystem import is_hidden
+
         if root is None:
             root = self.app.source_root
         changes = ChangeSet()
@@ -110,6 +112,10 @@ class Generator:
             for directory, _, filenames in os.walk(root):
                 for filename in filenames:
                     path = os.path.join(directory, filename)
+
+                    if is_hidden(path):
+                        continue
+
                     stat = os.stat(path)
                     current_sources[path] = datetime.datetime.fromtimestamp(stat.st_mtime)
 

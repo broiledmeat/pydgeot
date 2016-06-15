@@ -2,6 +2,8 @@ import sys
 import os
 import stat
 
+from pydgeot.filesystem.glob import Glob
+
 
 def is_dotfile(path):
     """

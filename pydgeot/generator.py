@@ -116,6 +116,11 @@ class Generator:
                     if is_hidden(path):
                         continue
 
+                    config = self.app.get_config(path)
+                    rel_path = self.app.relative_path(path)
+                    if any(glob.match(rel_path) for glob in config.ignore):
+                        continue
+
                     stat = os.stat(path)
                     current_sources[path] = datetime.datetime.fromtimestamp(stat.st_mtime)
 

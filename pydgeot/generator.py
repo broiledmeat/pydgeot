@@ -113,9 +113,6 @@ class Generator:
                 for filename in filenames:
                     path = os.path.join(directory, filename)
 
-                    if is_hidden(path):
-                        continue
-
                     config = self.app.get_config(path)
                     rel_path = self.app.relative_path(path)
                     if any(glob.match(rel_path) for glob in config.ignore):

@@ -97,6 +97,12 @@ class App:
         console_handler.setLevel(logging.INFO)
         self.log.addHandler(console_handler)
 
+        # Import builtin processors and commands
+        # noinspection PyUnresolvedReferences
+        from pydgeot.commands import builtins
+        # noinspection PyUnresolvedReferences
+        from pydgeot.processors import builtins
+
         if self.is_valid:
             # Make source root if necessary
             os.makedirs(self.source_root, exist_ok=True)
@@ -123,12 +129,6 @@ class App:
             # Init database
             self._init_database()
 
-            # Import builtin processors and commands
-            # noinspection PyUnresolvedReferences
-            from pydgeot.commands import builtins
-            # noinspection PyUnresolvedReferences
-            from pydgeot.processors import builtins
-
             # Load plugins
             # noinspection PyTypeChecker
             for plugin in config.get('plugins', []):
@@ -137,9 +137,9 @@ class App:
                 except Exception as e:
                     raise AppError('Unable to load plugin \'{0}\': {1}'.format(plugin, e))
 
-            self.commands.update(commands.available)
-            for name, processor in processors.available.items():
-                self.processors[name] = processor(self)
+        self.commands.update(commands.available)
+        for name, processor in processors.available.items():
+            self.processors[name] = processor(self)
 
     def _init_database(self):
         self.db_connection = sqlite3.connect(self.db_path)

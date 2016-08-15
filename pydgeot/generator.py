@@ -100,8 +100,6 @@ class Generator:
         :return: ChangeSet instance, representing any changed files.
         :rtype: pydgeot.generator.ChangeSet
         """
-        from pydgeot.filesystem import is_hidden
-
         if root is None:
             root = self.app.source_root
         changes = ChangeSet()

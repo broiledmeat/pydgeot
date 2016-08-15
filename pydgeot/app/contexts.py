@@ -98,6 +98,8 @@ class Contexts:
         :return: Set of ContextResults for found context vars.
         :rtype: set[pydgeot.app.contexts.ContextResult]
         """
+        from pydgeot.filesystem import Glob
+
         if name is None and value is None and source is None:
             return set()
         query = '''
@@ -112,12 +114,13 @@ class Contexts:
             query += ' AND c.name = ?'
             query_vars.append(name)
         if value is not None:
-            if '%' in value or '_' in value:
-                query += ' AND c.value LIKE ?'
-                query_vars.append(value)
+            glob = Glob(str(value))
+            if glob.is_glob:
+                query += ' AND c.value REGEXP ?'
+                query_vars.append(glob.regex)
             else:
                 query += ' AND c.value = ?'
-                query_vars.append(value)
+                query_vars.append(glob.value)
         if source is not None:
             rel = self.app.relative_path(source)
             query += ' AND s.path = ?'
@@ -223,7 +226,7 @@ class Contexts:
                     query_vars.append(name)
                 if value is not None:
                     subqueries.append('''
-                        ((c.value_globbed = 1 AND ? LIKE c.value) OR
+                        ((c.value_globbed = 1 AND ? REGEXP c.value) OR
                          (c.value_globbed <> 1 AND ? = c.value))''')
                     query_vars.append(value)
                     query_vars.append(value)
@@ -256,7 +259,7 @@ class Contexts:
                     query_vars.append(name)
                 if value is not None:
                     if globbed == 1:
-                        subqueries.append('c.value LIKE ?')
+                        subqueries.append('c.value REGEXP ?')
                     else:
                         subqueries.append('c.value = ?')
                     query_vars.append(value)
@@ -292,7 +295,7 @@ class Contexts:
         Removes all dependencies for a source path.
 
         :param dependency: Source path to remove dependencies from.
-        :type dependency: bool
+        :type dependency: str
         """
         did = self.app.sources.add_source(dependency)
         self.cursor.execute('DELETE FROM context_var_dependencies WHERE dependency_id = ?', (did, ))
@@ -310,12 +313,13 @@ class Contexts:
         :param source: Source path of the named context var.
         :type source: str | None
         """
+        from pydgeot.filesystem import Glob
+
         did = self.app.sources.add_source(dependency)
         sid = self.app.sources.add_source(source) if source is not None else None
-        # TODO: take in to account escaped characters
-        value_globbed = int('%' in value or '_' in value) if value is not None else False
+        glob = Glob(value)
         self.cursor.execute('''
             INSERT INTO context_var_dependencies
                 (name, value, value_globbed, source_id, dependency_id)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (name, value, value_globbed, sid, did))
+            ''', (name, glob.regex if glob.is_glob else glob.value, glob.is_glob, sid, did))

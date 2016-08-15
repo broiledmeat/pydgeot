@@ -34,17 +34,6 @@ def _db_regex_func(expr, item):
     return reg.search(item) is not None
 
 
-def _merge_dict(a, b):
-    import copy
-    merged = copy.copy(a)
-    for key in b:
-        if key in merged and isinstance(merged[key], dict) and isinstance(b[key], dict):
-            merged[key] = _merge_dict(merged[key], b[key])
-            continue
-        merged[key] = b[key]
-    return merged
-
-
 class App:
     def __init__(self, root=None):
         """
@@ -70,9 +59,6 @@ class App:
         if not self.is_valid and raise_invalid:
             raise InvalidAppRoot('App root \'{0}\' does not exist or is not a valid app directory.'.format(self.root))
 
-        # Directory path and config dictionary
-        self.configurations = {}
-        """:type: dict[str, DirConfig]"""
         # Command name and callable
         self.commands = {}
         """:type: dict[str, callable]"""
@@ -210,15 +196,7 @@ class App:
         :return: Configuration dictionary for the given path.
         :rtype: pydgeot.app.dirconfig.DirConfig
         """
-        if os.path.isfile(path):
-            path = os.path.dirname(path)
-
-        if path in self.configurations:
-            return self.configurations[path]
-
-        config = DirConfig(self, path)
-        self.configurations[path] = config
-        return config
+        return DirConfig.get(self, path)
 
     def get_processor(self, path):
         """

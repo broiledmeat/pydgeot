@@ -38,7 +38,7 @@ if __name__ == '__main__':
     if app is not None:
         try:
             app.run_command(args['<command>'], *args['<args>'])
-        except CommandError as e:
+        except (AppError, CommandError) as e:
             print(e)
             exit(2)
         except KeyboardInterrupt:

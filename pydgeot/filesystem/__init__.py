@@ -1,7 +1,6 @@
 import sys
 import os
 import stat
-
 from pydgeot.filesystem.glob import Glob
 
 

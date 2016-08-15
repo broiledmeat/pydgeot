@@ -113,7 +113,7 @@ class Generator:
 
                     config = self.app.get_config(path)
                     rel_path = self.app.relative_path(path)
-                    if any(glob.match(rel_path) for glob in config.ignore):
+                    if any(glob.match_path(rel_path) for glob in config.ignore):
                         continue
 
                     stat = os.stat(path)

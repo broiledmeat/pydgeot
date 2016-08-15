@@ -18,25 +18,59 @@ class Glob:
     """
     def __init__(self, glob):
         """
-        :type glob: str
+        :type glob: str | Any
         """
-        self.glob = glob
-        self.pattern = Glob.translate(glob)
+        self.value = glob
+        self.is_glob = Glob.is_glob(glob)
+        if self.is_glob:
+            import re
+            self.regex = Glob.as_regex(glob)
+            self._regex = re.compile(self.regex)
+        else:
+            self.regex = None
+            self._regex = None
 
-    def match(self, match):
+    def match_path(self, path):
         """
-        Return whether the glob matches a given string or not.
+        Return whether the glob matches a given path or not.
         Back slash path separaters '\\', which will be translated to a forward slash before matching.
 
-        :param match: String to match the glob against.
-        :type match: str
+        :param path: Path to match the glob against.
+        :type path: str
         :return: Whether the glob matches the given string.
         :rtype: bool
         """
-        return self.pattern.match(match.replace('\\\\', '/')) is not None
+        path = path.replace('\\\\', '/')
+        if self._regex is None:
+            return self.value == path
+        return self._regex.match(path) is not None
 
     @staticmethod
-    def translate(glob):
+    def is_glob(glob):
+        """
+        Determine if the given string is a glob or not.
+
+        :param glob: The potential glob pattern.
+        :type glob: str | Any
+        :return: Whether the given string is a glob or not.
+        :rtype: bool
+        """
+        if glob is None or not isinstance(glob, str):
+            return False
+
+        i = 0
+        length = len(glob)
+        while i < length:
+            c = glob[i]
+            if c == '\\':
+                i += 1
+            elif c in ('?', '*'):
+                return True
+            i += 1
+        return False
+
+    @staticmethod
+    def as_regex(glob):
         """
         Get the regex representation of the given glob pattern.
 
@@ -45,8 +79,6 @@ class Glob:
         :return: Regex equivalent of the given glob pattern.
         :rtype: typing.Pattern[str]
         """
-        import re
-
         pattern = '^'
         i = 0
         length = len(glob)
@@ -72,7 +104,4 @@ class Glob:
             pattern += c
             i += 1
         pattern += '$'
-        try:
-            return re.compile(pattern)
-        except re.error:
-            raise ValueError('Glob pattern \'{}\' is malformed'.format(glob))
+        return pattern

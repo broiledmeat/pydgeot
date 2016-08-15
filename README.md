@@ -119,14 +119,14 @@ plugins, but more can be loaded by adding them to the configurations `plugins` l
 A minimal set of simple web development focused plugins come built in. They do not need to be included in the
 configurations `plugins` list, but must be enabled in the `processors` list.
 
-- Copy Fallback, (configuration processor name: `Copy`)
+- Copy Fallback, (configuration processor name: `Copy`)  
   Copies any files not handled by other file processors.
-- Symlink Fallback, (configuration processor name: `Symlink`)
+- Symlink Fallback, (configuration processor name: `Symlink`)  
   Creates symlinks for files not handled by other file processors.
-- [LessCSS](http://lesscss.org), (configuration processor name: `LessCSS`)
+- [LessCSS](http://lesscss.org), (configuration processor name: `LessCSS`)  
   LessCSS to CSS processor. Requires [lesscpy](https://pypi.python.org/pypi/lesscpy).
-- [Jinja2](http://jinja.pocoo.org), (configuration processor name: `Jinja`)
-  Jinja2 template processor. Requires [Jinja2](https://pypi.python.org/pypi/Jinja2).
+- [Jinja2](http://jinja.pocoo.org), (configuration processor name: `Jinja`)  
+Jinja2 template processor. Requires [Jinja2](https://pypi.python.org/pypi/Jinja2).
   - Setting a context variable
     `setcontext name="value"` can be used to set a scoped variable, and add a context variable for the file.
     Variables are available everywhere, and not limited to just the file it was created in.

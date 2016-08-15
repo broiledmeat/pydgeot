@@ -1,21 +1,18 @@
 # Pydgeot
-Pydgeot is a low-frills static website generator with fairly limited plugin support. It is still under active
-development; any suggestions/criticisms/yellings are more than welcome.
+Pydgeot is a low-frills static content generator. It aims to be as simplistic as possible, primarily providing a core
+set of functionality made available to plugins.
 
 ### Features
-- Tracks file changes, so only files that need to be updated are touched.
-- File system watcher to build content on-the-fly.
-- File processor and command plugins.
-- Built-in [Jinja2 template](http://jinja.pocoo.org/docs/) and [LESS CSS](http://lesscss.org/) processors.
+- Dependency tracking for content rebuilding.
+- On-the-fly content building for development.
+- Built-in [Jinja2 template](http://jinja.pocoo.org) and [Less CSS](http://lesscss.org) processors.
 
 ### Requirements
 - Python 3.*
 - [DocOpt](https://github.com/docopt/docopt)
 
-Additionally, the built-in Jinja2 and Lesscpy processors require [Jinja2](https://github.com/mitsuhiko/jinja2) and
-[Lesscpy](https://github.com/robotis/Lesscpy), respectively.
-
 ### Installation
+Pydgeot is not yet on PyPI, and must be installed from source.
 ```bash
 git clone https://github.com/broiledmeat/pydgeot.git pydgeot
 cd pydgeot
@@ -24,16 +21,17 @@ python setup.py install
 
 ### Usage
 Pydgeot not only needs content to generate, but a place to store working files and configuration for the associated
-content. All this data is stored in what Pydgeot calls an 'app' directory. An app directory contains the source content,
-the built content, configuration, working data, and any plugins specific to the app. A new
-[app directory](#_app_directories) can be created with the 'create' command.
+content. All this data is stored in an 'app' directory. An app directory contains the source and built content
+subdirectories, a working and log directory, and a base configuration file. A new [app directory](#_app_directories) can
+be created with the 'create' command.
 
 ```bash
 pydgeot create [PATH]
 ```
 
-This generates an empty configuration, and without at least specifying some plugins, nothing will be generated. Read the
-[configuration section](#_configuration) to get started.
+This creates the given path, the required subdirectories, and an empty configuration file. The configuration file does
+not load any plugins, and without modification, Pydgeot won't have anything to build. Read the
+[configuration section](#_configuration) to get started modifying the configuration file.
 
 Once configuration is done, and content has been placed in the source content directory, Pydgeot can build content with
 the 'build' command.
@@ -61,46 +59,87 @@ A Pydgeot app directory contains the following directories and files.
 - `build/` Content built from the `source/` directory
 - `store/` Working data store for Pydgeot and plugins
 - `store/log/` Log files
-- `pydgeot.json` Configuration file
+- `pydgeot.json` Root configuration file
 
 ### Configuration<a id="_configuration"></a>
-Pydgeot keeps a single JSON configuration file for itself and plugins. Before Pydgeot will do anything of use, the
-configuration file must have at least the `plugins` field set (which is also the only field Pydgeot itself currently
-reads.)
+Pydgeot keeps a single JSON configuration file in the app directory, but allows nesting additional configuration files
+within source directories. Configurations in source directories will be merged with parent configurations, overriding
+any already set dictionary keys or values. Configuration files can be used by plugins, but Pydgeot itself only watches a
+few directives.
 
 - `plugins`
-  A list of plugin modules to load. Each name corresponds to a python module. A simple configuration file specifying
-  only loading Pydgeots built-in plugins would look like:
+  Used only in the app directory configuration file. A list of python   module to load, which may contain processor or
+  command plugins.
 
   ```json
   {
-    "plugins": ["builtins.jinja", "builtins.copyfallback"]
+    "plugins": ["example", "other.example"]
   }
   ```
 
+- `processors`
+  A list of file processors to use for the containing directory and any   subdirectories. These may be from the built in
+  processors, or from additional loaded plugins.
+
+  ```json
+  {
+    "plugins": ["Jinja", "LessCSS", "Copy"]
+  }
+  ```
+
+- `ignore`
+  A list of [glob patterns](#_glob_patterns). Any file matching one of the patterns will not be processed.
+
+
+### Glob Patterns<a id="_glob_patterns"></a>
+Globs support the following special characters (which may be escaped, to ignore the special meaning.)
+
+  - `?`  Match any single character (excluding path separator)
+  - `*`  Match 0 or more characters (excluding path separators)
+  - `**` Match 0 or more characters
+
+  ```json
+  {
+    "ignore": ["*.pyc", "**.png", "**/example.py", "examp??.txt"]
+  }
+  ```
+
+  - `*.pyc` Will match any `.pyc` file in the containing directory
+  - `**.png` Will match any `.png` file in the containing directory, and any subdirectories
+  - `**/example.py` Will match `example.py` files in subdirectories, but not the containing directory.
+  - `examp??.txt` Will match `example.txt` and `examp00.txt` in the containing directory, but not `examp.txt` or
+                  `examples.txt`
+
+
 ### Plugins
-Pydgeot plugins are optional modules that may add commands and/or file processors. Pydgeot does come with a few built-in
+Pydgeot plugins are Python modules that may add commands and file processors. Pydgeot does come with a few built-in
 plugins, but more can be loaded by adding them to the configurations `plugins` list.
 
 #### Built-In Plugins
-- [Jinja2](https://github.com/mitsuhiko/jinja2)
-  Jinja2 template file processor.
+A minimal set of simple web development focused plugins come built in. They do not need to be included in the
+configurations `plugins` list, but must be enabled in the `processors` list.
+
+- Copy Fallback, (configuration processor name: `Copy`)
+  Copies any files not handled by other file processors.
+- Symlink Fallback, (configuration processor name: `Symlink`)
+  Creates symlinks for files not handled by other file processors.
+- [LessCSS](http://lesscss.org), (configuration processor name: `LessCSS`)
+  LessCSS to CSS processor. Requires [lesscpy](https://pypi.python.org/pypi/lesscpy).
+- [Jinja2](http://jinja.pocoo.org), (configuration processor name: `Jinja`)
+  Jinja2 template processor. Requires [Jinja2](https://pypi.python.org/pypi/Jinja2).
   - Setting a context variable
     `setcontext name="value"` can be used to set a scoped variable, and add a context variable for the file.
+    Variables are available everywhere, and not limited to just the file it was created in.
   - Getting context variables
     Use `getcontexts(name, "value")` to retrieve a list of files that have context variables named `name` and with
-    values matching `value`. `value` may be a glob (`%` character to match any number of characters, and `_` to match
-    any single character.)
-    For example, `{% for page in getcontexts("name", "experiments.%") %}` would
-    find any file with context variables named "name" with values starting with "experiments.", then grab all of that
-    files context variables and set them as properties of `page`.
-  - Marking pages as templates, without building them
+    values matching `value`. `value` may be a [glob pattern](#_glob_patterns).
+    For example, `{% for page in getcontexts("name", "experiments.*") %}` would find any file with context variables
+    named "name" with values starting with "experiments.", then grab all of that files context variables and set them as
+    properties of `page`.
+    Any changes made to these variables, no matter where they were created at, will result in the file being
+    regenerated.
+  - Including and extending pages
+    Files will be regenerated when an included or extended page changes.
+  - Marking pages as template only
     `{% set template_only=True %}` can be added to a template file to cause it to not be built (but will still update
-    any other template files that are based on it to
-  render when updated.)
-- [Lesscpy](https://github.com/robotis/Lesscpy)
-  LessCPY file processor.
-- CopyFallback
-  Copies any files not handled by other file processors.
-- SymlinkFallback
-  Creates symlinks for files not handled by other file processors.
+    any other template files that are based on it to render when updated.)

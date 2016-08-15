@@ -7,7 +7,7 @@ setup(
     packages=[
         'pydgeot',
         'pydgeot.app',
-        'pydgeot.utils',
+        'pydgeot.filesystem',
         'pydgeot.commands',
         'pydgeot.commands.builtins',
         'pydgeot.processors',

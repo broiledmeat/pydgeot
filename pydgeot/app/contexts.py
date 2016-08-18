@@ -65,7 +65,7 @@ class Contexts:
                     FROM context_var_dependencies
                     WHERE
                         dependency_id IN {0}
-                    '''.format(id_query), (ids + ids))
+                    '''.format(id_query), ids)
                 self.cursor.execute('DELETE FROM context_vars WHERE source_id IN {0}'.format(id_query), ids)
 
     def get_context(self, name, value=None, source=None):

@@ -196,9 +196,9 @@ class Contexts:
         :return: Set of ContextResults.
         :rtype: set[pydgeot.app.contexts.ContextResult]
         """
-        rel = self.app.relative_path(dependency)
         if recursive:
             return self._get_dependencies_recursive(dependency, reverse)
+        rel = self.app.relative_path(dependency)
         if reverse:
             # Get all the context vars source sets
             results = self.cursor.execute('''
@@ -226,7 +226,8 @@ class Contexts:
                     query_vars.append(name)
                 if value is not None:
                     subqueries.append('''
-                        ((c.value_globbed = 1 AND ? REGEXP c.value) OR
+                        ((c.value IS NULL) OR
+                         (c.value_globbed = 1 AND ? REGEXP c.value) OR
                          (c.value_globbed <> 1 AND ? = c.value))''')
                     query_vars.append(value)
                     query_vars.append(value)
@@ -317,9 +318,13 @@ class Contexts:
 
         did = self.app.sources.add_source(dependency)
         sid = self.app.sources.add_source(source) if source is not None else None
-        glob = Glob(value)
+        is_glob = False
+        if value is not None:
+            glob = Glob(value)
+            is_glob = glob.is_glob
+            value = glob.regex if is_glob else glob.value
         self.cursor.execute('''
             INSERT INTO context_var_dependencies
                 (name, value, value_globbed, source_id, dependency_id)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (name, glob.regex if glob.is_glob else glob.value, glob.is_glob, sid, did))
+            ''', (name, value, is_glob, sid, did))

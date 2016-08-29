@@ -159,7 +159,7 @@ else:
         @staticmethod
         def _get_context_requests(ast):
             context_requests = []
-            for node in ast.find_all(jinja2.nodes.Call, ):
+            for node in ast.find_all((jinja2.nodes.Call, )):
                 if isinstance(node.node, jinja2.nodes.Name) and len(node.args) == 2 and \
                         isinstance(node.args[0], jinja2.nodes.Const) and isinstance(node.args[1], jinja2.nodes.Const):
                     context_requests.append((node.args[0].value, node.args[1].value))

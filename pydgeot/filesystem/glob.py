@@ -30,6 +30,12 @@ class Glob:
             self.regex = None
             self._regex = None
 
+    def __hash__(self):
+        return hash(self.value)
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and other.value == self.value
+
     def match_path(self, path):
         """
         Return whether the glob matches a given path or not.

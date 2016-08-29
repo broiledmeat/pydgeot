@@ -104,5 +104,6 @@ class register:
 
     def __call__(self, cls):
         global available
-        name = cls.__name__ if cls.name is None else cls.name
+        name = cls.name if cls.name is not None else cls.__name__
         available[name] = cls
+        return cls

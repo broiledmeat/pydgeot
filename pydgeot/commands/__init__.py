@@ -53,6 +53,7 @@ class register:
         global available
         command = Command(func, self.name, self.help_args, self.help_msg)
         available[command.name] = command
+        return func
 
 
 class CommandError(Exception):

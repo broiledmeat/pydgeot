@@ -1,5 +1,3 @@
-import inspect
-
 available = {}
 """:type: dict[str, Command]"""
 
@@ -20,7 +18,7 @@ class Command:
         :type help_msg: str
         """
         self.func = func
-        self.name = name if name is not None else func.__name__
+        self.name = name
         self.help_args = help_args
         self.help_msg = help_msg
 
@@ -44,14 +42,11 @@ class register:
         self.name = name
         self.help_args = help_args
         self.help_msg = help_msg
-        mod_name = inspect.getmodule(inspect.stack()[1][0]).__name__
-        if '.' in mod_name:
-            mod_name = mod_name[mod_name.rindex('.') + 1:]
-        self.module_name = mod_name
 
     def __call__(self, func):
         global available
-        command = Command(func, self.name, self.help_args, self.help_msg)
+        name = self.name or func.__name__
+        command = Command(func, name, self.help_args, self.help_msg)
         available[command.name] = command
         return func
 

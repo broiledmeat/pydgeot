@@ -1,5 +1,5 @@
 import os
-import inspect
+
 
 available = {}
 """:type: dict[str, callable[pydgeot.app.App]"""
@@ -14,16 +14,16 @@ class Processor:
     modified files have been prepared, generation will be run, creating and updating targets files in the build
     directory.
     """
-    # Display name for config/logging/etc, None will use __class__.name
+    # Display name for config/logging/etc, None will use __class__.name. Overridden by the register decorator.
     name = None
     """:type: str | None"""
 
-    # Help message
+    # Help message. Overridden by the register decorator.
     help_msg = ''
     """:type: str"""
 
     # Processors can_process methods are checked in order of priority. Processors with higher priority values are
-    # checked earlier.
+    # checked earlier. Overridden by the register decorator.
     priority = 50
     """:type: int"""
 
@@ -103,11 +103,26 @@ class register:
     Decorator to add Processor class definitions to the list of available processors.
     """
 
-    def __init__(self):
-        self.module_name = inspect.getmodule(inspect.stack()[1][0]).__name__
+    def __init__(self, name=None, priority=None, help_msg=None):
+        """
+        Decorator to add Processor class definitions to the list of available processors.
+
+        :param name: Name of the processor, if None, the name of the processor class is used.
+        :type name: str | None
+        :param priority: Processor checking priority. Higher values are checked earlier.
+        :type priority: int | None
+        :param help_msg: Usage text describing the processors purpose.
+        :type help_msg: str | None
+        """
+        self.name = name
+        self.priority = priority
+        self.help_msg = help_msg
 
     def __call__(self, cls):
         global available
-        name = cls.name if cls.name is not None else cls.__name__
+        name = self.name or cls.name or cls.__name__
+        cls.name = name
+        cls.priority = self.priority or cls.priority
+        cls.help_msg = self.help_msg or cls.help_msg
         available[name] = cls
         return cls

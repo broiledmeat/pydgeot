@@ -9,13 +9,12 @@ def list_processors(app):
     :param app: App instance to get processors for.
     :type app: pydgeot.app.App | None
     """
-    processors = sorted(app.processors.values(), key=lambda x: x.name if x.name else x.__class__.__name)
+    processors = sorted(app.processors.values(), key=lambda p: p.name)
 
     if len(processors) == 0:
         return
 
-    left_align = max(14, max([len(p.name if p.name else p.__class__.__name__) for p in processors])) + 4
+    left_align = max(14, max([len(p.name) for p in processors])) + 4
 
     for processor in processors:
-        disp = processor.name if processor.name else processor.__class__.__name__
-        print('{0}    {1}'.format(disp.rjust(left_align), processor.help_msg))
+        print('{0}    {1}'.format(processor.name.rjust(left_align), processor.help_msg))

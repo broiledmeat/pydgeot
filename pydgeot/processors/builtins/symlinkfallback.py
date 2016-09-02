@@ -3,14 +3,11 @@ from pydgeot.processors import register, Processor
 from pydgeot.filesystem import create_symlink
 
 
-@register()
+@register(name='symlink', priority=0)
 class SymlinkFallbackProcessor(Processor):
     """
     Creates a symlink for any target file in to the build directory. Run with lowest priority.
     """
-    name = 'Symlink'
-    priority = 0
-
     def can_process(self, path):
         return True
 

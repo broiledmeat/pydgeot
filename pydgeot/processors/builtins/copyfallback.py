@@ -3,14 +3,11 @@ import shutil
 from pydgeot.processors import register, Processor
 
 
-@register()
+@register(name='copy', priority=0)
 class CopyFallbackProcessor(Processor):
     """
     Copies any target file over to the build directory. Run with lowest priority.
     """
-    name = 'Copy'
-    priority = 0
-
     def can_process(self, path):
         return True
 

@@ -37,7 +37,7 @@ else:
             return []
 
 
-    @register()
+    @register(name='jinja')
     class JinjaProcessor(Processor):
         """
         Compile a Jinja (http://jinja.pocoo.org/) template source file in to the build directory.
@@ -47,8 +47,6 @@ else:
         To mark a file as only being used as a template (no file will be generated for it,) use Jinja's built in 'set'
         to set the 'template_only' variable to True.
         """
-        name = 'Jinja'
-
         def __init__(self, app):
             super().__init__(app)
 

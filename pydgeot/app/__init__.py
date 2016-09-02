@@ -119,7 +119,7 @@ class App:
             # noinspection PyTypeChecker
             for plugin in config.get('plugins', []):
                 try:
-                    importlib.import_module(plugin)
+                    importlib.import_module('pydgeot.plugins.{}'.format(plugin))
                 except Exception as e:
                     raise AppError('Unable to load plugin \'{0}\': {1}'.format(plugin, e))
 

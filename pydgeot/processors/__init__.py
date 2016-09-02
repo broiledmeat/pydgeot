@@ -18,6 +18,10 @@ class Processor:
     name = None
     """:type: str | None"""
 
+    # Help message
+    help_msg = ''
+    """:type: str"""
+
     # Processors can_process methods are checked in order of priority. Processors with higher priority values are
     # checked earlier.
     priority = 50

@@ -1,0 +1,37 @@
+from pydgeot.commands import register
+
+
+@register(name='plugins', help_msg='List available plugins')
+def list_plugins(app):
+    """
+    Print available plugin information.
+
+    :param app: App instance to get plugins for.
+    :type app: pydgeot.app.App | None
+    """
+    import os
+    import ast
+    import pkgutil
+    import pydgeot
+
+    plugins = {}
+
+    plugins_path = os.path.join(os.path.dirname(pydgeot.__file__), 'plugins')
+    for finder, name, _ in pkgutil.iter_modules([plugins_path]):
+        plugin_path = finder.find_module(name).get_filename()
+        tree = ast.parse(open(plugin_path).read())
+        help_nodes = [node
+                      for node in tree.body
+                      if (isinstance(node, ast.Assign) and
+                          len(node.targets) > 0 and
+                          node.targets[0].id == '__help_msg__')]
+
+        plugins[name] = help_nodes[0].value.s if len(help_nodes) > 0 else ''
+
+    if len(plugins) == 0:
+        return
+
+    left_align = max(14, max([len(key) for key in plugins.keys()]))
+
+    for name, help_msg in plugins.items():
+        print('{0}    {1}'.format(name.rjust(left_align), help_msg))

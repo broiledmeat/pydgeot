@@ -35,6 +35,8 @@ def _db_regex_func(expr, item):
 
 
 class App:
+    plugins_package_name = 'pydgeot.plugins'
+
     def __init__(self, root=None):
         """
         Initialize a new App instance for the given app directory.
@@ -119,7 +121,7 @@ class App:
             # noinspection PyTypeChecker
             for plugin in config.get('plugins', []):
                 try:
-                    importlib.import_module('pydgeot.plugins.{}'.format(plugin))
+                    importlib.import_module('{}.{}'.format(self.plugins_package_name, plugin))
                 except Exception as e:
                     raise AppError('Unable to load plugin \'{0}\': {1}'.format(plugin, e))
 

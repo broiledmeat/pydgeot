@@ -14,16 +14,16 @@ class Processor:
     modified files have been prepared, generation will be run, creating and updating targets files in the build
     directory.
     """
-    # Display name for config/logging/etc, None will use __class__.name. Overridden by the register decorator.
+    # Display name for config/logging/etc, None will use __class__.name. May be overridden by the register decorator.
     name = None
     """:type: str | None"""
 
-    # Help message. Overridden by the register decorator.
+    # Help message. May be overridden by the register decorator.
     help_msg = ''
     """:type: str"""
 
     # Processors can_process methods are checked in order of priority. Processors with higher priority values are
-    # checked earlier. Overridden by the register decorator.
+    # checked earlier. May be overridden by the register decorator.
     priority = 50
     """:type: int"""
 

@@ -3,7 +3,7 @@ from distutils.core import setup
 
 setup(
     name='pydgeot',
-    version='0.3',
+    version='0.4',
     packages=[
         'pydgeot',
         'pydgeot.app',

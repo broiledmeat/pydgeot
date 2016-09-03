@@ -9,6 +9,7 @@ def list_plugins(app):
     :param app: App instance to get plugins for.
     :type app: pydgeot.app.App | None
     """
+    import sys
     import os
     import ast
     import pkgutil
@@ -31,7 +32,8 @@ def list_plugins(app):
     if len(plugins) == 0:
         return
 
-    left_align = max(14, max([len(key) for key in plugins.keys()]))
+    left_align = max(14, max([len(key) + 1 for key in plugins.keys()]))
 
-    for name, help_msg in plugins.items():
-        print('{0}    {1}'.format(name.rjust(left_align), help_msg))
+    for name in sorted(plugins):
+        disp = ('*' if '{}.{}'.format(app.plugins_package_name, name) in sys.modules else ' ') + name
+        print('{}    {}'.format(disp.rjust(left_align), plugins[name]))

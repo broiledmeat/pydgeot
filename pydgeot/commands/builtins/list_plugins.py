@@ -9,7 +9,6 @@ def list_plugins(app):
     :param app: App instance to get plugins for.
     :type app: pydgeot.app.App | None
     """
-    import sys
     import os
     import ast
     import pkgutil
@@ -21,19 +20,38 @@ def list_plugins(app):
     for finder, name, _ in pkgutil.iter_modules(plugin_paths):
         plugin_path = finder.find_module(name).get_filename()
         tree = ast.parse(open(plugin_path).read())
-        help_nodes = [node
-                      for node in tree.body
-                      if (isinstance(node, ast.Assign) and
-                          len(node.targets) > 0 and
-                          node.targets[0].id == '__help_msg__')]
 
-        plugins[name] = help_nodes[0].value.s if len(help_nodes) > 0 else ''
+        plugins[name] = (_get_node_value(tree.body, '__version__'),
+                         _get_node_value(tree.body, '__help_msg__'))
 
     if len(plugins) == 0:
         return
 
-    left_align = max(14, max([len(key) + 1 for key in plugins.keys()]))
+    name_align = max(14, max([len(key) + 1 for key in plugins.keys()]))
+    version_align = max([len(version) for version, _ in plugins.values()])
 
     for name in sorted(plugins):
-        disp = ('*' if '{}.{}'.format(app.plugins_package_name, name) in sys.modules else ' ') + name
-        print('{}    {}'.format(disp.rjust(left_align), plugins[name]))
+        version, help_msg = plugins[name]
+        print('{} {}    {}'.format(name.rjust(name_align), version.rjust(version_align), help_msg).rstrip())
+
+
+def _get_node_value(body, name):
+    """
+    :param body: list[ast.AST]
+    :param name: str
+    :rtype: str
+    """
+    import ast
+
+    nodes = [node for node in body
+             if (isinstance(node, ast.Assign) and
+                 len(node.targets) > 0 and
+                 node.targets[0].id == name)]
+
+    if len(nodes) > 0:
+        if isinstance(nodes[0].value, ast.Num):
+            return str(nodes[0].value.n)
+        elif isinstance(nodes[0].value, ast.Str):
+            return nodes[0].value.s
+
+    return ''

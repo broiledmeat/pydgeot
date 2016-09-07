@@ -17,8 +17,8 @@ def list_plugins(app):
 
     plugins = {}
 
-    plugins_path = os.path.join(os.path.dirname(pydgeot.__file__), 'plugins')
-    for finder, name, _ in pkgutil.iter_modules([plugins_path]):
+    plugin_paths = [os.path.join(path, 'plugins') for path in pydgeot.__path__]
+    for finder, name, _ in pkgutil.iter_modules(plugin_paths):
         plugin_path = finder.find_module(name).get_filename()
         tree = ast.parse(open(plugin_path).read())
         help_nodes = [node

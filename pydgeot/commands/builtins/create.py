@@ -2,12 +2,12 @@ from pydgeot.commands import register
 
 
 # noinspection PyUnusedLocal
-@register(help_args='PATH', help_msg='Generate a new Pydgeot app directory')
+@register(help_args='PATH', help_msg='Generate a new Pydgeot app directory', allow_appless=True)
 def create(app, path):
     """
     Create a new App directory.
 
-    :param app: Unused.
+    :param app: App instance. Unused.
     :type app: pydgeot.app.App | None
     :param path: Directory path to create as an App directory.
     :type path: str

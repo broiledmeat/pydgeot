@@ -14,7 +14,7 @@ def list_processors(app):
     if len(processors) == 0:
         return
 
-    left_align = max(14, max([len(p.name) for p in processors])) + 4
+    left_align = max(14, max([len(p.name) for p in processors]))
 
     for processor in processors:
         print('{0}    {1}'.format(processor.name.rjust(left_align), processor.help_msg))

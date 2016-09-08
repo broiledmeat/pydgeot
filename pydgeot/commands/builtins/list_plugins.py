@@ -1,14 +1,15 @@
 from pydgeot.commands import register
 
 
-@register(name='plugins', help_msg='List available plugins')
+@register(name='plugins', help_msg='List available plugins', allow_appless=True)
 def list_plugins(app):
     """
     Print available plugin information.
 
-    :param app: App instance to get plugins for.
-    :type app: pydgeot.app.App | None
+    :param app: App instance.
+    :type app: pydgeot.app.App
     """
+    import sys
     import os
     import ast
     import pkgutil
@@ -27,12 +28,18 @@ def list_plugins(app):
     if len(plugins) == 0:
         return
 
-    name_align = max(14, max([len(key) + 1 for key in plugins.keys()]))
+    name_align = max(14, max([len(name) + 1 for name in plugins.keys()]))
     version_align = max([len(version) for version, _ in plugins.values()])
 
     for name in sorted(plugins):
+        display_name = name
         version, help_msg = plugins[name]
-        print('{} {}    {}'.format(name.rjust(name_align), version.rjust(version_align), help_msg).rstrip())
+
+        if app is not None:
+            module_name = '{}.{}'.format(app.plugins_package_name, name)
+            display_name = '{}{}'.format('*' if module_name in sys.modules else '', name)
+
+        print('{} {}    {}'.format(display_name.rjust(name_align), version.rjust(version_align), help_msg).rstrip())
 
 
 def _get_node_value(body, name):

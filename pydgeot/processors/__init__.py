@@ -1,4 +1,5 @@
 import os
+from pydgeot.processors.builtins import register_builtins
 
 
 available = {}
@@ -119,7 +120,6 @@ class register:
         self.help_msg = help_msg
 
     def __call__(self, cls):
-        global available
         name = self.name or cls.name or cls.__name__
         cls.name = name
         cls.priority = self.priority or cls.priority

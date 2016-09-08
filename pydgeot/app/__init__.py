@@ -4,14 +4,9 @@ import logging
 import logging.handlers
 import importlib
 import sqlite3
-from pydgeot import processors, commands
 from pydgeot.app.dirconfig import DirConfig
 from pydgeot.app.sources import Sources
 from pydgeot.app.contexts import Contexts
-
-
-class InvalidAppRoot(Exception):
-    pass
 
 
 class AppError(Exception):
@@ -37,33 +32,22 @@ def _db_regex_func(expr, item):
 class App:
     plugins_package_name = 'pydgeot.plugins'
 
-    def __init__(self, root=None):
+    def __init__(self, root):
         """
         Initialize a new App instance for the given app directory.
 
         :param root: App directory path root to initialize at. If None the current working directory will be used.
-        :type root: str | None
+        :type root: str
         """
-        # If root is None, then try to use the current directory. If it doesn't work then just set is_valid to false.
-        # If it is set, and the directory is invalid, then raise InvalidAppRoot
-        raise_invalid = root is not None
-        root = root if root is not None else './'
-
         # Set app path directories
-        self.root = os.path.realpath(os.path.abspath(os.path.expanduser(root)))
-        self.source_root = os.path.realpath(os.path.join(self.root, 'source'))
-        self.store_root = os.path.realpath(os.path.join(self.root, 'store'))
-        self.log_root = os.path.realpath(os.path.join(self.store_root, 'log'))
-        self.build_root = os.path.realpath(os.path.join(self.root, 'build'))
-        self.config_path = os.path.realpath(os.path.join(self.root, 'pydgeot.conf'))
+        self.root = os.path.abspath(os.path.expanduser(root))
+        self.source_root = os.path.join(self.root, 'source')
+        self.store_root = os.path.join(self.root, 'store')
+        self.log_root = os.path.join(self.store_root, 'log')
+        self.build_root = os.path.join(self.root, 'build')
+        self.config_path = os.path.join(self.root, 'pydgeot.conf')
         self.is_valid = os.path.isdir(self.root) and os.path.isfile(self.config_path)
 
-        if not self.is_valid and raise_invalid:
-            raise InvalidAppRoot('App root \'{0}\' does not exist or is not a valid app directory.'.format(self.root))
-
-        # Command name and callable
-        self.commands = {}
-        """:type: dict[str, callable]"""
         # Processor name and instance
         self.processors = {}
         """:type: dict[str, pydgeot.processors.Processor]"""
@@ -86,10 +70,9 @@ class App:
         self.log.addHandler(console_handler)
 
         # Import builtin processors and commands
-        # noinspection PyUnresolvedReferences
-        from pydgeot.commands import builtins
-        # noinspection PyUnresolvedReferences
-        from pydgeot.processors import builtins
+        from pydgeot import commands, processors
+        commands.register_builtins()
+        processors.register_builtins()
 
         if self.is_valid:
             # Make source root if necessary
@@ -125,7 +108,6 @@ class App:
                 except Exception as e:
                     raise AppError('Unable to load plugin \'{0}\': {1}'.format(plugin, e))
 
-        self.commands.update(commands.available)
         for name, processor in processors.available.items():
             self.processors[name] = processor(self)
 
@@ -225,9 +207,9 @@ class App:
         :param path: File path to process.
         :type path: str
         :param default: Value to return if no processor could be found.
-        :type default: object
+        :type default: Any
         :return: Tuple containing the processor used (if any,) and its return value of the method called.
-        :rtype: tuple[pydgeot.app.processors.Processor | None, object]
+        :rtype: tuple[pydgeot.app.processors.Processor | None, Any]
         """
         processor = self.get_processor(path)
         if processor is not None and hasattr(processor, name):
@@ -278,32 +260,6 @@ class App:
         """
         for processor in self.processors.values():
             processor.generation_complete()
-
-    def run_command(self, name, *args):
-        """
-        Run a command.
-
-        :param name: Name of the command to run.
-        :type name: str
-        :param args: Arguments to pass to the command.
-        :type args: list(object)
-        :return: Return value of the command being run.
-        :rtype: object
-        :raises pydgeot.app.CommandError: If a command with the given name does not exist.
-        :raises pydgeot.app.CommandError: If the number of arguments passed to the command is not correct.
-        """
-        if name in self.commands:
-            command = self.commands[name]
-            args_len = len(args) + 1
-            arg_count = command.func.__code__.co_argcount
-            has_varg = command.func.__code__.co_flags & 0x04 > 0
-
-            if (has_varg and args_len >= arg_count) or (not has_varg and args_len == arg_count):
-                self.log.debug('Command "%s"', ' '.join([name] + list(args)))
-                return command.func(self, *args)
-            else:
-                raise commands.CommandError('Incorrect number of arguments passed to command \'{0}\''.format(name))
-        raise commands.CommandError('Command \'{0}\' does not exist'.format(name))
 
     def source_path(self, path):
         """

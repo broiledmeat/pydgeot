@@ -5,7 +5,7 @@ set of functionality made available to plugins.
 ### Features
 - Dependency tracking for content rebuilding.
 - On-the-fly content building for development.
-- Built-in [Jinja2 template](http://jinja.pocoo.org) and [Less CSS](http://lesscss.org) processors.
+- Built-in [Less CSS](http://lesscss.org) processor.
 
 ### Requirements
 - Python 3.*
@@ -115,8 +115,8 @@ Pydgeot plugins are Python modules that may add commands and file processors. Py
 plugins, but more can be loaded by adding them to the configurations `plugins` list.
 
 #### Built-In Plugins
-A minimal set of simple web development focused plugins come built in. They do not need to be included in the
-configurations `plugins` list, but must be enabled in the `processors` list.
+A minimal set of processors come built in. They do not need to be included in the configurations `plugins` list, but
+must be enabled in the `processors` list.
 
 - Copy Fallback, (configuration processor name: `copy`)
   Copies any files not handled by other file processors.
@@ -124,21 +124,3 @@ configurations `plugins` list, but must be enabled in the `processors` list.
   Creates symlinks for files not handled by other file processors.
 - [LessCSS](http://lesscss.org), (configuration processor name: `lesscss`)
   LessCSS to CSS processor. Requires [lesscpy](https://pypi.python.org/pypi/lesscpy).
-- [Jinja2](http://jinja.pocoo.org), (configuration processor name: `jinja`)
-Jinja2 template processor. Requires [Jinja2](https://pypi.python.org/pypi/Jinja2).
-  - Setting a context variable
-    `setcontext name="value"` can be used to set a scoped variable, and add a context variable for the file.
-    Variables are available everywhere, and not limited to just the file it was created in.
-  - Getting context variables
-    Use `getcontexts(name, "value")` to retrieve a list of files that have context variables named `name` and with
-    values matching `value`. `value` may be a [glob pattern](#_glob_patterns).
-    For example, `{% for page in getcontexts("name", "experiments.*") %}` would find any file with context variables
-    named "name" with values starting with "experiments.", then grab all of that files context variables and set them as
-    properties of `page`.
-    Any changes made to these variables, no matter where they were created at, will result in the file being
-    regenerated.
-  - Including and extending pages
-    Files will be regenerated when an included or extended page changes.
-  - Marking pages as template only
-    `{% set template_only=True %}` can be added to a template file to cause it to not be built (but will still update
-    any other template files that are based on it to render when updated.)

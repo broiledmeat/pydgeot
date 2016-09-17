@@ -5,7 +5,6 @@ set of functionality made available to plugins.
 ### Features
 - Dependency tracking for content rebuilding.
 - On-the-fly content building for development.
-- Built-in [Less CSS](http://lesscss.org) processor.
 
 ### Requirements
 - Python 3.*
@@ -122,5 +121,3 @@ must be enabled in the `processors` list.
   Copies any files not handled by other file processors.
 - Symlink Fallback, (configuration processor name: `symlink`)
   Creates symlinks for files not handled by other file processors.
-- [LessCSS](http://lesscss.org), (configuration processor name: `lesscss`)
-  LessCSS to CSS processor. Requires [lesscpy](https://pypi.python.org/pypi/lesscpy).

@@ -4,7 +4,8 @@ import os
 def test_base(temp_app, resources):
     from pydgeot.app.dirconfig import DirConfig
     from pydgeot.filesystem.glob import Glob
-    from pydgeot.processors.builtins import CopyFallbackProcessor, JinjaProcessor
+    from pydgeot.processors.builtins.copyfallback import CopyFallbackProcessor
+    from pydgeot.processors.builtins.symlinkfallback import SymlinkFallbackProcessor
 
     resources.copy('test_dirconfig', temp_app.root)
 
@@ -13,13 +14,13 @@ def test_base(temp_app, resources):
     assert config is not None
     assert len(config.processors) == 2
     assert any([isinstance(proc, CopyFallbackProcessor) for proc in config.processors])
-    assert any([isinstance(proc, JinjaProcessor) for proc in config.processors])
+    assert any([isinstance(proc, SymlinkFallbackProcessor) for proc in config.processors])
     assert config.ignore == {Glob('**/.ignore')}
 
 
 def test_overriding(temp_app, resources):
     from pydgeot.app.dirconfig import DirConfig
-    from pydgeot.processors.builtins import LessCSSProcessor
+    from pydgeot.processors.builtins.symlinkfallback import SymlinkFallbackProcessor
 
     resources.copy('test_dirconfig', temp_app.root)
 
@@ -27,5 +28,5 @@ def test_overriding(temp_app, resources):
 
     assert config is not None
     assert len(config.processors) == 1
-    assert isinstance(config.processors[0], LessCSSProcessor)
+    assert isinstance(config.processors[0], SymlinkFallbackProcessor)
     assert config.extra == {'testing01': 0, 'testing02': 2, 'extra': {'test': True, 'ok': 'alright'}}

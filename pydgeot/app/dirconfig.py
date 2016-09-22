@@ -2,9 +2,9 @@ import os
 import json
 
 
-class DirConfig:
+class BaseDirConfig:
     """
-    App configuration for a directory.
+    Base app configuration for a directory.
     """
     _cached = {}
     """:type: dict[type, dict[str, DirConfig]]"""
@@ -14,19 +14,13 @@ class DirConfig:
         Initialize a new DirConfig instance for the given App. The `get` class method should be used instead of
         initializing this directly.
 
-        :param app: App to associated with the directory.
+        :param app: App associated with the directory.
         :type app: pydgeot.app.App
-        :param path:
+        :param path: Directory to get configuration for.
         :type path: str
         """
         self.app = app
         self.path = path
-        self.processors = []
-        """:type: list[pydgeot.processors.Processor]"""
-        self.ignore = set()
-        """:type: set[pydgeot.filesystem.Glob]"""
-        self.extra = {}
-        """:type: dict[str, object]"""
 
         self._load()
 
@@ -85,6 +79,62 @@ class DirConfig:
         :type config: dict[str, Any]
         :type parent: DirConfig | None
         """
+        raise NotImplementedError
+
+    @classmethod
+    def _merge_dict(cls, target, source):
+        """
+        Return a merged copy of two dictionaries. Overwriting any matching keys from the second over the first, but
+        merging any dictionary values.
+
+        :param target: Original dictionary to copy and update.
+        :type target: dict
+        :param source: Dictionary to update items from.
+        :type source: dict
+        :return: Copied and updated target dictionary.
+        :rtype: dict
+        """
+        import copy
+        merged = copy.copy(target)
+        for key in source:
+            if key in merged and isinstance(merged[key], dict) and isinstance(source[key], dict):
+                merged[key] = cls._merge_dict(merged[key], source[key])
+                continue
+            merged[key] = source[key]
+        return merged
+
+
+class DirConfig(BaseDirConfig):
+    """
+    App configuration for a directory.
+    """
+    def __init__(self, app, path):
+        """
+        Initialize a new DirConfig instance for the given App. The `get` class method should be used instead of
+        initializing this directly.
+
+        :param app: App to associated with the directory.
+        :type app: pydgeot.app.App
+        :param path:
+        :type path: str
+        """
+        self.processors = []
+        """:type: list[pydgeot.processors.Processor]"""
+        self.ignore = set()
+        """:type: set[pydgeot.filesystem.Glob]"""
+        self.extra = {}
+        """:type: dict[str, object]"""
+
+        super().__init__(app, path)
+
+    def _parse(self, config_path, config, parent):
+        """
+        Parse current path and parent configuration data retrieved from _load.
+
+        :type config_path: str
+        :type config: dict[str, Any]
+        :type parent: DirConfig | None
+        """
         from pydgeot.app import AppError
         from pydgeot.filesystem import Glob
 
@@ -119,25 +169,3 @@ class DirConfig:
         self.extra = config
         if parent is not None:
             self.extra = self.__class__._merge_dict(parent.extra, self.extra)
-
-    @classmethod
-    def _merge_dict(cls, target, source):
-        """
-        Return a merged copy of two dictionaries. Overwriting any matching keys from the second over the first, but
-        merging any dictionary values.
-
-        :param target: Original dictionary to copy and update.
-        :type target: dict
-        :param source: Dictionary to update items from.
-        :type source: dict
-        :return: Copied and updated target dictionary.
-        :rtype: dict
-        """
-        import copy
-        merged = copy.copy(target)
-        for key in source:
-            if key in merged and isinstance(merged[key], dict) and isinstance(source[key], dict):
-                merged[key] = cls._merge_dict(merged[key], source[key])
-                continue
-            merged[key] = source[key]
-        return merged

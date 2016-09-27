@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
+import sys
 import setuptools
 from distutils.core import setup
+
+if sys.version_info < (3, ):
+    print('Sorry, Pydgeot requires Python 3')
+    exit(1)
 
 base_package = 'pydgeot'
 

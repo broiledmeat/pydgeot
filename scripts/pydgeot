@@ -19,7 +19,7 @@ if __name__ == '__main__':
     sys.path = sys.path[1:]
     from pydgeot import __version__, app, commands
 
-    args = docopt(__doc__, version='Pydgeot ' + '.'.join(map(lambda x: str(x), __version__)))
+    args = docopt(__doc__, version='Pydgeot {}'.format(__version__))
     if args['commands']:
         args['<command>'] = 'commands'
 

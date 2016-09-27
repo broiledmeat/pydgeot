@@ -1,12 +1,13 @@
 import os
 from pydgeot.processors import register, Processor
-from pydgeot.utils.filesystem import create_symlink
+from pydgeot.filesystem import create_symlink
 
 
-@register()
+@register(name='symlink', priority=0)
 class SymlinkFallbackProcessor(Processor):
-    priority = 0
-
+    """
+    Creates a symlink for any target file in to the build directory. Run with lowest priority.
+    """
     def can_process(self, path):
         return True
 

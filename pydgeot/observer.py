@@ -15,11 +15,13 @@ class _ObserverBase:
         """
         Initialize the observer.
 
-        Args:
-            path: Directory path to observe.
+        :param path: Directory path to observe.
+        :type path: str
         """
         self.path = path
         self.changed = {}
+        self.on_changed_handlers = set()
+        """:type: set[callable[str]]"""
 
     def start(self):
         """
@@ -32,8 +34,8 @@ class _ObserverBase:
         Place a file change event in to the change queue. Should be called from the observation loop when file changes
         are detected.
 
-        Args:
-            path: File path to place in to the change queue.
+        :param path: File path to place in to the change queue.
+        :type path: str
         """
         if not os.path.isdir(path):
             self.changed[path] = time.time()
@@ -56,20 +58,20 @@ class _ObserverBase:
         Called when a file change has been through the queue and timed out (when the file can be sure to have finished
         changing.) This should be overridden in the observer instance.
 
-        Args:
-            path: File path to signal as having been changed.
+        :param path: File path to signal as having been changed.
+        :type path: str
         """
-        raise NotImplementedError
+        for handler in self.on_changed_handlers:
+            handler(path)
 
     def is_locked(self, path):
         """
         Check if a file is locked (still being written to.)
 
-        Args:
-            path: File path to check if is locked.
-
-        Returns:
-            Whether the file path is locked.
+        :param path: File path to check if is locked.
+        :type path: str
+        :return: If the file path is being written to.
+        :rtype: bool
         """
         return False
 
@@ -102,8 +104,8 @@ if sys.platform == 'linux':
                 """
                 Pyinotify catch-all change event.
 
-                Args:
-                    e: Pyinotify change event.
+                :param e: Pyinotify change event.
+                :type e: pyinotify.ProcessEvent
                 """
                 self.queue_changed(e.pathname)
     except ImportError:
@@ -165,8 +167,8 @@ elif sys.platform == 'win32':
                     # When copying files, Windows will only report one change event. On large files this can cause the
                     # change queue to timeout and signal a change prematurely. Luckily, the file won't be open for read
                     # until the copy operation is done, so check for readability.
-                    f = open(path, 'r')
-                    f.close()
+                    with open(path, 'r'):
+                        pass
                     return False
                 except IOError:
                     return True
@@ -211,8 +213,8 @@ if 'Observer' not in globals():
             while True:
                 time.sleep(self.event_timeout)
                 after = self.get_files_list()
-                added = [f for f in after if not f in before]
-                removed = [f for f in before if not f in after]
+                added = [f for f in after if f not in before]
+                removed = [f for f in before if f not in after]
                 updated = [f for f in after if f in before and after[f] != before[f]]
                 for path in added + removed + updated:
                     path = os.path.abspath(os.path.join(self.path, path))
@@ -224,8 +226,8 @@ if 'Observer' not in globals():
             """
             Get a flat list of file paths with modified times.
 
-            Returns:
-                A list of tuples containing a file path and its modified time.
+            :return: Dict of file paths and modified times.
+            :rtype: dict[str, int]
             """
             walk = os.walk(self.path)
             files = [os.path.join(path, filename) for path, dirs, files in walk for filename in files]

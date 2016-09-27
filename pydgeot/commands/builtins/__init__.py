@@ -1,8 +1,9 @@
-import pkgutil
-
-
-# Import all modules in this package at runtime so commands are registered.
-__all__ = []
-for loader, module_name, is_pkg in pkgutil.walk_packages(__path__):
-    __all__.append(module_name)
-    loader.find_module(module_name).load_module(module_name)
+def register_builtins():
+    from .build import build
+    from .clean import clean
+    from .create import create
+    from .list_commands import list_commands
+    from .list_plugins import list_plugins
+    from .list_processors import list_processors
+    from .reset import reset
+    from .watch import watch

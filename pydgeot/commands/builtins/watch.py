@@ -3,8 +3,16 @@ from pydgeot.commands import register
 
 @register(help_args='[event delay[, timeout]]', help_msg='Continuously build static content')
 def watch(app, *args):
+    """
+    Build content for an App instance, and then monitor changes, building content as needed.
+
+    :param app: App instance to watch and build content for.
+    :type app: pydgeot.app.App
+    :param args: List of optional parameters for the content generator. The first element will be used for the event
+                 timeout. The second will be used for the file changed timeout.
+    :type args: list[str]
+    """
     import os
-    import types
     from pydgeot.commands import CommandError
     from pydgeot.generator import Generator
     from pydgeot.observer import Observer
@@ -24,12 +32,12 @@ def watch(app, *args):
                                                                                            obs.event_timeout,
                                                                                            obs.changed_timeout))
 
-        def on_changed(self, path):
+        def on_changed(path):
             root = os.path.dirname(path)
             changes = gen.collect_changes(root)
             gen.process_changes(changes)
 
-        setattr(Observer, on_changed.__name__, types.MethodType(on_changed, Observer))
+        obs.on_changed_handlers.add(on_changed)
         obs.start()
     else:
         raise CommandError('Need a valid Pydgeot app directory.')

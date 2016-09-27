@@ -14,8 +14,8 @@ class ChangeSet:
         """
         Merge from another ChangeSet.
 
-        Args:
-            other: ChangeSet to merge changes from.
+        :param other: ChangeSet to merge changes from.
+        :type other: pydgeot.generator.ChangeSet()
         """
         self.generate |= other.generate
         self.delete |= other.delete
@@ -23,12 +23,13 @@ class ChangeSet:
 
 class Generator:
     """
-    Source content builder for App instances.
+    Source content builder for App instances. Determines file changes in the Apps source directory, and passes modified
+    files to the appropriate processors to generate content in the Apps build directory.
     """
     def __init__(self, app):
         """
-        Args:
-            app: Parent App instance.
+        :param app: Parent App instance.
+        :type app: pydgeot.app.App
         """
         self.app = app
 
@@ -45,8 +46,8 @@ class Generator:
         """
         Build content for a given ChangeSet.
 
-        Args:
-            changes: ChangeSet to build content for.
+        :param changes: ChangeSet to build content for.
+        :type changes: pydgeot.generator.ChangeSet
         """
         for path in changes.delete:
             self.app.processor_delete(path)
@@ -94,29 +95,29 @@ class Generator:
         """
         Find updated or deleted files in a directory.
 
-        Args:
-            root: Directory path to look for changes in.
-
-        Returns:
-            A ChangeSet instance, representing any changed files.
+        :param root: Directory path to look for changes in.
+        :type root: str
+        :return: ChangeSet instance, representing any changed files.
+        :rtype: pydgeot.generator.ChangeSet
         """
         if root is None:
             root = self.app.source_root
         changes = ChangeSet()
 
-        dirs = set()
-
-        old_sources = dict([(s.path, s.modified) for s in self.app.sources.get_sources(root, recursive=False)])
+        old_sources = dict([(s.path, s.modified) for s in self.app.sources.get_sources(root)])
         current_sources = {}
         if os.path.isdir(root):
-            for filename in os.listdir(root):
-                path = os.path.join(root, filename)
-                if os.path.exists(path):
+            for directory, _, filenames in os.walk(root):
+                for filename in filenames:
+                    path = os.path.join(directory, filename)
+
+                    config = self.app.get_config(path)
+                    rel_path = self.app.relative_path(path)
+                    if any(glob.match_path(rel_path) for glob in config.ignore):
+                        continue
+
                     stat = os.stat(path)
-                    if os.path.isdir(path):
-                        dirs.add(path)
-                    else:
-                        current_sources[path] = datetime.datetime.fromtimestamp(stat.st_mtime)
+                    current_sources[path] = datetime.datetime.fromtimestamp(stat.st_mtime)
 
         for path, mtime in current_sources.items():
             if path not in old_sources or (mtime - old_sources[path]).total_seconds() > 1:
@@ -125,8 +126,5 @@ class Generator:
         for old_path, old_mtime in old_sources.items():
             if old_path not in current_sources:
                 changes.delete.add(old_path)
-
-        for path in dirs:
-            changes.merge(self.collect_changes(path))
 
         return changes

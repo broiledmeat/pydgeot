@@ -11,7 +11,12 @@ set of functionality made available to plugins.
 - [DocOpt](https://github.com/docopt/docopt)
 
 ### Installation
-Pydgeot is not yet on PyPI, and must be installed from source.
+Pydgeot can be installed via pip:
+```bash
+pip install pydgeot
+```
+
+Or via source:
 ```bash
 git clone https://github.com/broiledmeat/pydgeot.git pydgeot
 cd pydgeot

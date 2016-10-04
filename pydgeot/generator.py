@@ -10,16 +10,6 @@ class ChangeSet:
         self.generate = set()
         self.delete = set()
 
-    def merge(self, other):
-        """
-        Merge from another ChangeSet.
-
-        :param other: ChangeSet to merge changes from.
-        :type other: pydgeot.generator.ChangeSet()
-        """
-        self.generate |= other.generate
-        self.delete |= other.delete
-
 
 class Generator:
     """
@@ -49,33 +39,25 @@ class Generator:
         :param changes: ChangeSet to build content for.
         :type changes: pydgeot.generator.ChangeSet
         """
+        dep_changes = ChangeSet()
+
+        # Remove deleted files and set dependencies to be updated.
         for path in changes.delete:
+            # Grab any dependencies before deleting the path
+            dep_changes.generate |= self._get_dependency_tree(path)
+
             self.app.processor_delete(path)
 
-        # Prepare new or updated files to set targets and dependencies. Add those dependencies to another ChangeSet to
-        # be prepared.
-        dep_changes = ChangeSet()
+        # Prepare new or updated files to set targets and dependencies.
         for path in list(changes.generate):
-            # Grab dependencies before preparing, in case any context vars had been removed.
-            source_deps = set([s.path for s in self.app.sources.get_dependencies(path, reverse=True, recursive=True)])
-            context_deps = set([c.source for c in
-                                self.app.contexts.get_dependencies(path, reverse=True, recursive=True)])
+            # Grab dependencies before preparing, in case any context vars had been removed
+            dep_changes.generate |= self._get_dependency_tree(path)
 
             # Prepare the source to refresh any new dependencies
             self.app.processor_prepare(path)
 
             # Add any files the source is dependent on or depends on it
-            source_deps |= set([s.path for s in self.app.sources.get_dependencies(path, reverse=True, recursive=True)])
-            context_deps |= set([c.source for c in
-                                 self.app.contexts.get_dependencies(path, reverse=True, recursive=True)])
-
-            # Get source dependencies for context dependency sources.
-            source_deps |= set([s.path
-                                for c in context_deps
-                                for s in self.app.sources.get_dependencies(c, reverse=True, recursive=True)])
-
-            # Add source and context dependencies to the changeset.
-            dep_changes.generate |= source_deps | context_deps
+            dep_changes.generate |= self._get_dependency_tree(path)
 
         # Prepare dependent changes that weren't in the original changes list
         for path in (dep_changes.generate - changes.generate):
@@ -90,6 +72,27 @@ class Generator:
 
         # Commit database changes
         self.app.db_connection.commit()
+
+    def _get_dependency_tree(self, source):
+        """
+        Get a set of the entire dependency tree for a source path.
+
+        :param source: Source path to get dependency paths for.
+        :type source: str
+        :return: Set of source paths.
+        :rtype: set[str]
+        """
+        # Get source and context dependencies.
+        source_deps = set([s.path for s in self.app.sources.get_dependencies(source, reverse=True, recursive=True)])
+        context_deps = set([c.source for c in
+                            self.app.contexts.get_dependencies(source, reverse=True, recursive=True)])
+
+        # Get source dependencies for context dependency sources.
+        source_deps |= set([s.path
+                            for c in context_deps
+                            for s in self.app.sources.get_dependencies(c, reverse=True, recursive=True)])
+
+        return source_deps | context_deps
 
     def collect_changes(self, root=None):
         """

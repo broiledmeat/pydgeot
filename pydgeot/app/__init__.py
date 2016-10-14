@@ -234,7 +234,7 @@ class App:
         :param path: File path to process.
         :type path: str
         """
-        self._processor_call('prepare', path)
+        return self._processor_call('prepare', path)
 
     def processor_generate(self, path):
         """
@@ -243,7 +243,7 @@ class App:
         :param path: File path to process.
         :type path: str
         """
-        self._processor_call('generate', path)
+        return self._processor_call('generate', path)
 
     def processor_delete(self, path):
         """

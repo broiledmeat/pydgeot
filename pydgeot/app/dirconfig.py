@@ -118,8 +118,8 @@ class DirConfig(BaseDirConfig):
         :param path:
         :type path: str
         """
-        self.processors = []
-        """:type: list[pydgeot.processors.Processor]"""
+        self.processors = set()
+        """:type: set[pydgeot.processors.Processor]"""
         self.ignore = set()
         """:type: set[pydgeot.filesystem.Glob]"""
         self.extra = {}
@@ -144,11 +144,10 @@ class DirConfig(BaseDirConfig):
             for processor in processors:
                 processor_inst = self.app.processors.get(processor, None)
                 if processor_inst is not None:
-                    self.processors.append(processor_inst)
+                    self.processors.add(processor_inst)
                 else:
                     raise AppError('Could not load config \'{}\', unable to find processor: \'{}\''.format(config_path,
                                                                                                            processor))
-            self.processors = sorted(self.processors, key=lambda p: p.priority, reverse=True)
         elif processors is None and parent is not None:
             self.processors = parent.processors
 

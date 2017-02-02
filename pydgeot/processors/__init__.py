@@ -23,11 +23,6 @@ class Processor:
     help_msg = ''
     """:type: str"""
 
-    # Processors can_process methods are checked in order of priority. Processors with higher priority values are
-    # checked earlier. May be overridden by the register decorator.
-    priority = 50
-    """:type: int"""
-
     def __init__(self, app):
         """
         :param app: Parent App instance.
@@ -45,6 +40,21 @@ class Processor:
         :rtype: bool
         """
         raise NotImplementedError
+
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
+    def negotiate_process(self, path, processors):
+        """
+        Resolve multiple Processors attempting to process the same file. If more than one Processor returns True from
+        a can_process call for the same path, negotiate_process will be called on each Processor. This allows the
+        Processor to either continue processing, decide not to process the path.
+
+        :param path: File path that has multiple processors attempting to process.
+        :type path: str
+        :param processors: Other processors attempting to process the path.
+        :type processors: set[Processor]
+        :rtype: bool
+        """
+        return True
 
     def prepare(self, path):
         """
@@ -104,25 +114,21 @@ class register:
     Decorator to add Processor class definitions to the list of available processors.
     """
 
-    def __init__(self, name=None, priority=None, help_msg=None):
+    def __init__(self, name=None, help_msg=None):
         """
         Decorator to add Processor class definitions to the list of available processors.
 
         :param name: Name of the processor, if None, the name of the processor class is used.
         :type name: str | None
-        :param priority: Processor checking priority. Higher values are checked earlier.
-        :type priority: int | None
         :param help_msg: Usage text describing the processors purpose.
         :type help_msg: str | None
         """
         self.name = name
-        self.priority = priority
         self.help_msg = help_msg
 
     def __call__(self, cls):
         name = self.name or cls.name or cls.__name__
         cls.name = name
-        cls.priority = self.priority or cls.priority
         cls.help_msg = self.help_msg or cls.help_msg
         available[name] = cls
         return cls

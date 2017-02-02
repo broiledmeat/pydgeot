@@ -193,10 +193,18 @@ class App:
         """
         config = self.get_config(path)
 
-        for processor in config.processors:
-            if processor.can_process(path):
-                return processor
-        return None
+        processors = set([processor for processor in config.processors if processor.can_process(path)])
+
+        if len(processors) > 1:
+            processors = [processor for processor in processors
+                          if processor.negotiate_process(path, processors - {processor})]
+
+        if len(processors) == 0:
+            return None
+        elif len(processors) > 1:
+            raise AppError('Multiple processors attempting to process path \'{0}\': {1}'.format(path, processors))
+
+        return list(processors)[0]
 
     def _processor_call(self, name, path, default=None):
         """

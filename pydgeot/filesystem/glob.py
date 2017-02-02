@@ -16,15 +16,15 @@ class Glob:
     'ex??.txt'  will match 'exam.txt', but not 'example.txt'
     'ex??*.txt' will match 'exam.txt', and 'example.txt', but not 'exam/sample.txt'
     """
-    def __init__(self, glob):
+    def __init__(self, value):
         """
-        :type glob: str | Any
+        :type value: str | Any
         """
-        self.value = glob
-        self.is_glob = Glob.is_glob(glob)
+        self.value = value.value if isinstance(value, Glob) else value
+        self.is_glob = Glob.is_glob(self.value)
         if self.is_glob:
             import re
-            self.regex = Glob.as_regex(glob)
+            self.regex = Glob.as_regex(self.value)
             self._regex = re.compile(self.regex)
         else:
             self.regex = None
@@ -39,7 +39,7 @@ class Glob:
     def match_path(self, path):
         """
         Return whether the glob matches a given path or not.
-        Back slash path separaters '\\', which will be translated to a forward slash before matching.
+        Back slash path separaters '\\' will be translated to a forward slash before matching.
 
         :param path: Path to match the glob against.
         :type path: str

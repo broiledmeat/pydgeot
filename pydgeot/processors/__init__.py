@@ -8,14 +8,17 @@ available = {}
 
 class Processor:
     """
-    Base class for file processors. When generating content, an App will call can_process on each registered processor,
-    in sequential order (sorted by the processors priority.) The first processor to return True will then be used for
-    content preparation, generation, and deletion. Generally, preparation will determine what files a source file should
-    generate, what other source files it depends on, and sets any context variables the source file creates. After all
-    modified files have been prepared, generation will be run, creating and updating targets files in the build
-    directory.
+    Base class for file processors. When generating content, an App will call can_process on each registered Processor,
+    adding those that return True to a potential processor list. If more than one Processor ends up in the list,
+    negotiate_processor will then be called on each one, in an attempt filter the list down to a single Processor. If
+    the potential processor list remains at more than one Processor, an AppError will be thrown. Otherwise, if a single
+    Processor does remain, it will then be used for content preparation, generation, and deletion. Generally,
+    preparation will determine what files a source file should generate, what other source files it depends on, and sets
+    any context variables the source file creates. After all modified files have been prepared, generation will be run,
+    creating and updating targets files in the build directory.
     """
-    # Display name for config/logging/etc, None will use __class__.name. May be overridden by the register decorator.
+    # Display name for config/logging/etc, Specifying None will result in __class__.name being used. May be overridden
+    # by the register decorator.
     name = None
     """:type: str | None"""
 

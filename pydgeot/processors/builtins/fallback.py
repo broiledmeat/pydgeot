@@ -5,12 +5,13 @@ from pydgeot.app.dirconfig import BaseDirConfig
 from pydgeot.filesystem import Glob, create_symlink
 
 
-@register(name='fallback')
 class FallbackProcessor(Processor):
     """
     Copy or create a symlink for any target file over to the build directory. Only does so if no other Processor will
     process the file.
     """
+    name = 'fallback'
+
     def can_process(self, path):
         return self._is_copy_path(path) or self._is_symlink_path(path)
 

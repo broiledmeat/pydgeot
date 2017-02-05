@@ -48,7 +48,6 @@ def resources():
     return _ResourcesManager
 
 
-
 @pytest.fixture
 def temp_dir(request, tmpdir_factory):
     """
@@ -63,16 +62,12 @@ def temp_dir(request, tmpdir_factory):
 @pytest.fixture
 def temp_app(resources, temp_dir):
     from pydgeot.app import App
+    from pydgeot import processors
+
+    processors.available.clear()
+    processors.register_builtins()
 
     dest_path = os.path.join(temp_dir, 'test_app')
     resources.copy('app_new', dest_path)
-    return App(dest_path)
 
-    # import shutil
-    # from pydgeot.app import App
-    #
-    # name = getattr(request, 'param', 'app_new')
-    # source_path = os.path.join(resources_root, name)
-    # dest_path = os.path.join(temp_dir, 'test_app')
-    # shutil.copytree(source_path, dest_path)
-    # return App(dest_path)
+    return App(dest_path)

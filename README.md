@@ -86,7 +86,7 @@ few directives.
 
   ```json
   {
-    "plugins": ["jinja", "lesscss", "copy"]
+    "plugins": ["jinja", "lesscss", "fallback"]
   }
   ```
 
@@ -122,7 +122,17 @@ plugins, but more can be loaded by adding them to the configurations `plugins` l
 A minimal set of processors come built in. They do not need to be included in the configurations `plugins` list, but
 must be enabled in the `processors` list.
 
-- Copy Fallback, (configuration processor name: `copy`)
-  Copies any files not handled by other file processors.
-- Symlink Fallback, (configuration processor name: `symlink`)
-  Creates symlinks for files not handled by other file processors.
+- ##### Fallback
+  Copy or create symlinks for files that were not handled by any other processor. By default, copies all unhandled
+  files.
+  
+  ###### Configuration
+  ```json
+  {
+    "processors": ["fallback"],
+    "fallback": {
+      "copy_paths": ["**.png"],
+      "symlink_paths": ["photos/*.jpg", "**.pdf"]
+    }
+  }
+  ```
